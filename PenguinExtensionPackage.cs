@@ -23,6 +23,7 @@ namespace PenguinExtention
     /// </summary>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(PackageGuidString)]
+    [ProvideBindingPath]
     [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExistsAndFullyLoaded_string,
                      PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideToolWindow(typeof(UnrealExplorerWindow),
