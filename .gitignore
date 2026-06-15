@@ -1,0 +1,32 @@
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Re]leasePublic/
+x64/
+x86/
+[Aa]ny[Cc]PU/
+[Mm]icrosoft[Cc]ommon[Tt]argets
+bin/
+obj/
+
+# Visual Studio 2015/2017/2019/2022 cache/options directory
+.vs/
+# Our SQLite database cache folder
+.vs/PenguinExtension/
+
+# NuGet Packages
+packages/
+*.nuget.props
+*.nuget.targets
+
+# Backup Files
+Backup/
+UpgradeLog.htm

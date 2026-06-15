@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable"
+              xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <Extern href="stdidcmd.h"/>
+  <Extern href="vsshlids.h"/>
+
+  <Commands package="guidPenguinExtensionPackage">
+
+    <!-- Sub-menu under the Tools menu -->
+    <Menus>
+      <Menu guid="guidPenguinExtensionCmdSet" id="PenguinSubMenu"
+            priority="0x0700" type="Menu">
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_TOOLS_OTHER2"/>
+        <Strings>
+          <ButtonText>Penguin Extension</ButtonText>
+        </Strings>
+      </Menu>
+    </Menus>
+
+    <!-- Command group inside our sub-menu -->
+    <Groups>
+      <Group guid="guidPenguinExtensionCmdSet" id="PenguinMenuGroup" priority="0x0600">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinSubMenu"/>
+      </Group>
+    </Groups>
+
+    <!-- Commands -->
+    <Buttons>
+      <!-- Go To Unreal Definition -->
+      <Button guid="guidPenguinExtensionCmdSet" id="GoToUnrealDefinitionId"
+              priority="0x0100" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinMenuGroup"/>
+        <Strings>
+          <ButtonText>Go To Unreal Definition</ButtonText>
+          <ToolTipText>Navigate to the Unreal Engine definition of the symbol under the cursor (Ctrl+Shift+U, D)</ToolTipText>
+        </Strings>
+      </Button>
+
+      <!-- Open Unreal Explorer -->
+      <Button guid="guidPenguinExtensionCmdSet" id="OpenUnrealExplorerId"
+              priority="0x0200" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinMenuGroup"/>
+        <Strings>
+          <ButtonText>Open Unreal Explorer</ButtonText>
+          <ToolTipText>Open the Unreal Symbol Explorer tool window (Ctrl+Shift+U, E)</ToolTipText>
+        </Strings>
+      </Button>
+    </Buttons>
+
+  </Commands>
+
+  <!-- Key bindings -->
+  <KeyBindings>
+    <!-- Ctrl+Shift+U, D → Go To Unreal Definition (two-chord shortcut) -->
+    <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToUnrealDefinitionId"
+                editor="guidVSStd97"
+                key1="U" mod1="Control Shift"
+                key2="D"/>
+
+    <!-- Ctrl+Shift+U, E → Open Unreal Explorer (two-chord shortcut) -->
+    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenUnrealExplorerId"
+                editor="guidVSStd97"
+                key1="U" mod1="Control Shift"
+                key2="E"/>
+  </KeyBindings>
+
+  <!-- GUID and ID symbol definitions — must match PenguinExtensionCommandIds.cs -->
+  <Symbols>
+    <GuidSymbol name="guidPenguinExtensionPackage"
+                value="{7D9B3C2E-8A4F-4B1D-9E5C-6F0A2D3B8C7E}"/>
+
+    <GuidSymbol name="guidPenguinExtensionCmdSet"
+                value="{E5A3C1D9-4B2F-4E8A-B6D0-7C9F1A5E3D2B}">
+      <IDSymbol name="PenguinSubMenu"             value="0x1000"/>
+      <IDSymbol name="PenguinMenuGroup"            value="0x1050"/>
+      <IDSymbol name="GoToUnrealDefinitionId"      value="0x0100"/>
+      <IDSymbol name="OpenUnrealExplorerId"        value="0x0200"/>
+    </GuidSymbol>
+  </Symbols>
+
+</CommandTable>

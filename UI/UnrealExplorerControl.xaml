@@ -1,0 +1,134 @@
+<UserControl x:Class="PenguinExtention.UI.UnrealExplorerControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vsshell="clr-namespace:Microsoft.VisualStudio.Shell;assembly=Microsoft.VisualStudio.Shell.15.0"
+             xmlns:local="clr-namespace:PenguinExtention.UI"
+             Background="{DynamicResource {x:Static vsshell:VsBrushes.WindowKey}}"
+             Foreground="{DynamicResource {x:Static vsshell:VsBrushes.WindowTextKey}}">
+
+    <UserControl.Resources>
+        <!-- Shared styles that follow VS theming -->
+        <Style x:Key="FilterToggle" TargetType="ToggleButton">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource {x:Static vsshell:VsBrushes.CommandBarBorderKey}}"/>
+            <Setter Property="Background" Value="{DynamicResource {x:Static vsshell:VsBrushes.CommandBarGradientBeginKey}}"/>
+            <Setter Property="Foreground" Value="{DynamicResource {x:Static vsshell:VsBrushes.WindowTextKey}}"/>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static vsshell:VsBrushes.CommandBarSelectedKey}}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>    <!-- Search bar -->
+            <RowDefinition Height="Auto"/>    <!-- Filter chips -->
+            <RowDefinition Height="*"/>       <!-- Results list -->
+            <RowDefinition Height="Auto"/>    <!-- Status bar -->
+        </Grid.RowDefinitions>
+
+        <!-- Search Bar -->
+        <Border Grid.Row="0" Padding="6" 
+                Background="{DynamicResource {x:Static vsshell:VsBrushes.CommandBarGradientBeginKey}}">
+            <TextBox x:Name="SearchBox"
+                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     Padding="6,4"
+                     FontSize="13"
+                     Background="{DynamicResource {x:Static vsshell:VsBrushes.WindowKey}}"
+                     Foreground="{DynamicResource {x:Static vsshell:VsBrushes.WindowTextKey}}"
+                     BorderBrush="{DynamicResource {x:Static vsshell:VsBrushes.CommandBarBorderKey}}"
+                     ToolTip="Search Unreal symbols (prefix match)"
+                     Tag="🔍 Search Unreal symbols..."/>
+        </Border>
+
+        <!-- Filter Chips -->
+        <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="6,2,6,2">
+            <ToggleButton Content="Classes"    IsChecked="{Binding FilterClasses}"    Style="{StaticResource FilterToggle}"/>
+            <ToggleButton Content="Structs"    IsChecked="{Binding FilterStructs}"    Style="{StaticResource FilterToggle}"/>
+            <ToggleButton Content="Enums"      IsChecked="{Binding FilterEnums}"      Style="{StaticResource FilterToggle}"/>
+            <ToggleButton Content="Functions"  IsChecked="{Binding FilterFunctions}"  Style="{StaticResource FilterToggle}"/>
+            <ToggleButton Content="Properties" IsChecked="{Binding FilterProperties}" Style="{StaticResource FilterToggle}"/>
+            <Separator Margin="4,4"/>
+            <ToggleButton Content="Engine"     IsChecked="{Binding FilterEngineSymbols}"  Style="{StaticResource FilterToggle}"/>
+            <ToggleButton Content="Project"    IsChecked="{Binding FilterProjectSymbols}" Style="{StaticResource FilterToggle}"/>
+        </WrapPanel>
+
+        <!-- Results List -->
+        <ListView Grid.Row="2" 
+                  x:Name="ResultsList"
+                  ItemsSource="{Binding FilteredSymbols}"
+                  VirtualizingStackPanel.IsVirtualizing="True"
+                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  Background="{DynamicResource {x:Static vsshell:VsBrushes.WindowKey}}"
+                  Foreground="{DynamicResource {x:Static vsshell:VsBrushes.WindowTextKey}}"
+                  BorderThickness="0"
+                  MouseDoubleClick="ResultsList_MouseDoubleClick">
+
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Kind" Width="70">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding KindDisplay}" 
+                                           FontSize="11"
+                                           Foreground="{DynamicResource {x:Static vsshell:VsBrushes.CaptionTextKey}}"
+                                           FontWeight="SemiBold"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
+                    <GridViewColumn Header="Name" Width="200">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayText}" 
+                                           FontWeight="Medium"
+                                           ToolTip="{Binding Signature}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
+                    <GridViewColumn Header="Type" Width="120">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ReturnType}" 
+                                           FontSize="11"
+                                           Foreground="{DynamicResource {x:Static vsshell:VsBrushes.GrayTextKey}}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
+                    <GridViewColumn Header="File" Width="180">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock FontSize="11"
+                                           Foreground="{DynamicResource {x:Static vsshell:VsBrushes.GrayTextKey}}">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0}:{1}">
+                                            <Binding Path="FilePath" Converter="{x:Static local:FileNameConverter.Instance}"/>
+                                            <Binding Path="LineNumber"/>
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3" Padding="6,4"
+                Background="{DynamicResource {x:Static vsshell:VsBrushes.CommandBarGradientBeginKey}}">
+            <TextBlock Text="{Binding StatusText}" 
+                       FontSize="11"
+                       Foreground="{DynamicResource {x:Static vsshell:VsBrushes.GrayTextKey}}"/>
+        </Border>
+    </Grid>
+</UserControl>
