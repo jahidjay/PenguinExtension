@@ -1,0 +1,10 @@
+{
+  "id": "opaque-job-reference",
+  "sessionId": "opaque-session-reference",
+  "kind": "ai",
+  "state": "succeeded",
+  "result": {
+    "text": "Preview only; this fixture never edits project source.",
+    "model": "qwen2.5-coder:3b"
+  }
+}

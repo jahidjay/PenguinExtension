@@ -9,6 +9,7 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Adornments;
 using Microsoft.VisualStudio.Text.Operations;
 using PenguinExtention.Models;
+using PenguinExtention.Core;
 using PenguinExtention.Services;
 
 namespace PenguinExtention.QuickInfo
@@ -35,10 +36,9 @@ namespace PenguinExtention.QuickInfo
             IAsyncQuickInfoSession session,
             CancellationToken cancellationToken)
         {
-            var cache = CacheService.Instance;
-            if (cache == null || !cache.IsLoaded)
-                return null;
+            if (!BackendService.HoverEnabled || !BackendService.IsReady) return null;
 
+            await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             // Get the word under the cursor
             var triggerPoint = session.GetTriggerPoint(_textBuffer.CurrentSnapshot);
             if (!triggerPoint.HasValue)
@@ -54,10 +54,21 @@ namespace PenguinExtention.QuickInfo
             if (string.IsNullOrWhiteSpace(word) || word.Length < 2)
                 return null;
 
-            // Look up in cache
-            var symbols = cache.GetByExactName(word);
-            if (symbols.Count == 0)
-                return null;
+            if (BackendService.IsCore)
+            {
+                try
+                {
+                    var response = await DocumentSync.RequestAsync("textDocument/hover", triggerPoint.Value, cancellationToken).ConfigureAwait(false);
+                    var text = Protocol.PlainText((response as Newtonsoft.Json.Linq.JObject)?["contents"]);
+                    if (string.IsNullOrWhiteSpace(text)) return null;
+                    return new QuickInfoItem(extent.Span.Snapshot.CreateTrackingSpan(extent.Span, SpanTrackingMode.EdgeInclusive),
+                        new ClassifiedTextElement(new ClassifiedTextRun("text", text)));
+                }
+                catch (OperationCanceledException) { return null; }
+                catch (Exception ex) { BackendService.Report("Core hover: " + ex.Message); return null; }
+            }
+            var symbols = await BackendService.ExactAsync(word, cancellationToken).ConfigureAwait(false);
+            if (symbols.Count == 0) return null;
 
             // Build tooltip content
             var elements = new List<object>();
@@ -83,7 +94,7 @@ namespace PenguinExtention.QuickInfo
                 if (sym.Kind == UnrealSymbolKind.Class || sym.Kind == UnrealSymbolKind.Struct ||
                     sym.Kind == UnrealSymbolKind.Interface)
                 {
-                    var classInfo = cache.GetClassInfo(sym.Name);
+                    var classInfo = await BackendService.ClassInfoAsync(sym, cancellationToken).ConfigureAwait(false);
                     if (classInfo != null)
                     {
                         // Meta specifiers
@@ -153,10 +164,10 @@ namespace PenguinExtention.QuickInfo
             // Record usage for hot-symbol tracking
             foreach (var sym in symbols)
             {
-                cache.RecordUsage(sym.Id);
+                BackendService.RecordUsage(sym);
             }
 
-            var applicableSpan = _textBuffer.CurrentSnapshot.CreateTrackingSpan(
+            var applicableSpan = extent.Span.Snapshot.CreateTrackingSpan(
                 extent.Span,
                 SpanTrackingMode.EdgeInclusive);
 

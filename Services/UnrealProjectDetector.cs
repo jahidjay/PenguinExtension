@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Threading;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
@@ -41,6 +42,7 @@ namespace PenguinExtention.Services
             if (string.IsNullOrEmpty(SolutionDirectory))
                 return;
 
+            await TaskScheduler.Default;
             // Step 1: Find .uproject file
             UProjectFilePath = FindUProjectFile(SolutionDirectory);
             if (string.IsNullOrEmpty(UProjectFilePath))

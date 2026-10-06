@@ -1,0 +1,169 @@
+{
+  "name": "penguin-vscode",
+  "displayName": "Penguin Unreal Tools",
+  "description": "Unreal C++ navigation, indexing and opt-in local AI previews via Penguin LSP.",
+  "version": "0.1.0",
+  "publisher": "JahidNeo",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "onLanguage:cpp",
+    "onLanguage:c",
+    "workspaceContains:**/*.uproject"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Penguin launches a native backend and reads project configuration only in trusted workspaces."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "The native backend requires filesystem workspace roots."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "penguin.status",
+        "title": "Show Backend Status",
+        "category": "Penguin",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "penguin.reindex",
+        "title": "Reindex Workspace",
+        "category": "Penguin",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "penguin.searchSymbols",
+        "title": "Search Unreal Symbols",
+        "category": "Penguin",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "penguin.symbolDetails",
+        "title": "Show Symbol Details",
+        "category": "Penguin",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "penguin.inheritance",
+        "title": "Browse Inheritance",
+        "category": "Penguin",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "penguin.explainSelection",
+        "title": "Explain Selection (Local AI)",
+        "category": "Penguin",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "penguin.generatePreview",
+        "title": "Generate Preview (Local AI)",
+        "category": "Penguin",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "penguin.cancelJobs",
+        "title": "Cancel Active Jobs",
+        "category": "Penguin",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "penguin.restart",
+        "title": "Restart Backend",
+        "category": "Penguin",
+        "enablement": "isWorkspaceTrusted"
+      },
+      {
+        "command": "penguin.showOutput",
+        "title": "Show Output",
+        "category": "Penguin"
+      }
+    ],
+    "configuration": {
+      "title": "Penguin",
+      "properties": {
+        "penguin.server.path": {
+          "type": "string",
+          "default": "",
+          "scope": "window",
+          "markdownDescription": "Optional absolute path to a trusted penguin-lsp executable. Empty uses `bin/<platform>-<arch>/penguin-lsp(.exe)` packaged with this extension. Never read or launched in an untrusted workspace."
+        },
+        "penguin.engineRoots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Explicit absolute Unreal Engine directories on the extension host. Changing roots restarts the backend.",
+          "scope": "window"
+        },
+        "penguin.style": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true,
+          "description": "Backend-defined style configuration, passed unchanged as initializationOptions.penguin.style. Consult the backend documentation for supported keys.",
+          "scope": "window"
+        },
+        "penguin.ai.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt in to local AI requests using the configured model. Never starts a service, substitutes a missing model, or downloads one."
+        },
+        "penguin.ai.endpoint": {
+          "type": "string",
+          "default": "http://127.0.0.1:11434",
+          "description": "Local Ollama HTTP origin. Only loopback addresses are accepted; no credentials, path, query, or fragment."
+        },
+        "penguin.ai.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:3b",
+          "description": "Configured local model name. Must already be installed when AI is enabled. Missing models fail rather than being downloaded or substituted."
+        }
+      }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "penguin.explainSelection",
+          "when": "isWorkspaceTrusted && editorHasSelection && (editorLangId == cpp || editorLangId == c)",
+          "group": "penguin@1"
+        },
+        {
+          "command": "penguin.generatePreview",
+          "when": "isWorkspaceTrusted && (editorLangId == cpp || editorLangId == c)",
+          "group": "penguin@2"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test out/test/*.test.js",
+    "package": "npm run build && node scripts/check-binary.cjs && vsce package --allow-missing-repository --skip-license --out dist/penguin-vscode.vsix",
+    "package:check": "node scripts/check-binary.cjs"
+  },
+  "dependencies": {
+    "vscode-languageclient": "9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "1.85.0",
+    "@vscode/vsce": "4.0.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -41,6 +41,9 @@ namespace PenguinExtention.Services
         // All symbols flat list (for UI browsing / full scans)
         private List<UnrealSymbol> _allSymbols = new List<UnrealSymbol>();
 
+        // Id → symbol for O(1) usage tracking (only symbols with a DB id)
+        private Dictionary<long, UnrealSymbol> _byId = new Dictionary<long, UnrealSymbol>();
+
         /// <summary>Raised when the cache has been hydrated from SQLite and is ready for queries.</summary>
         public event EventHandler CacheReady;
 
@@ -98,9 +101,11 @@ namespace PenguinExtention.Services
             {
                 var matchingNames = FindNamesByPrefix(prefix);
                 var results = new List<UnrealSymbol>();
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                foreach (var name in matchingNames)
+                void Collect(string name)
                 {
+                    if (!seen.Add(name)) return;
                     if (_symbolsByName.TryGetValue(name, out var symbols))
                     {
                         foreach (var s in symbols)
@@ -109,6 +114,19 @@ namespace PenguinExtention.Services
                                 continue;
                             results.Add(s);
                         }
+                    }
+                }
+
+                foreach (var name in matchingNames)
+                    Collect(name);
+
+                // Camel-hump fallback (ponytail: linear scan, only when prefix results are sparse)
+                if (results.Count < limit && prefix.Length >= 2)
+                {
+                    foreach (var name in _sortedNames)
+                    {
+                        if (results.Count >= limit * 4) break;
+                        if (IsCamelHumpMatch(prefix, name)) Collect(name);
                     }
                 }
 
@@ -214,13 +232,7 @@ namespace PenguinExtention.Services
             _lock.EnterWriteLock();
             try
             {
-                // Remove old entries for this file
-                _allSymbols.RemoveAll(s => string.Equals(s.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
-
-                // Add new entries
-                _allSymbols.AddRange(newSymbols);
-
-                RebuildLookups();
+                ReplaceFileSymbols(filePath, newSymbols);
             }
             finally
             {
@@ -247,8 +259,7 @@ namespace PenguinExtention.Services
             _lock.EnterWriteLock();
             try
             {
-                _allSymbols.RemoveAll(s => string.Equals(s.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
-                RebuildLookups();
+                ReplaceFileSymbols(filePath, new UnrealSymbol[0]);
             }
             finally
             {
@@ -270,8 +281,7 @@ namespace PenguinExtention.Services
             _lock.EnterReadLock();
             try
             {
-                var sym = _allSymbols.FirstOrDefault(s => s.Id == symbolId);
-                if (sym != null)
+                if (_byId.TryGetValue(symbolId, out var sym))
                     sym.IncrementAccess();
             }
             finally
@@ -285,6 +295,7 @@ namespace PenguinExtention.Services
         private void RebuildLookups()
         {
             var dict = new Dictionary<string, List<UnrealSymbol>>(StringComparer.OrdinalIgnoreCase);
+            var byId = new Dictionary<long, UnrealSymbol>();
             foreach (var s in _allSymbols)
             {
                 if (!dict.TryGetValue(s.Name, out var list))
@@ -293,10 +304,76 @@ namespace PenguinExtention.Services
                     dict[s.Name] = list;
                 }
                 list.Add(s);
+                if (s.Id != 0) byId[s.Id] = s;
             }
 
             _symbolsByName = dict;
+            _byId = byId;
             _sortedNames = dict.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        /// <summary>Incrementally swaps one file's symbols; avoids re-sorting all names. Caller holds write lock.</summary>
+        private void ReplaceFileSymbols(string filePath, IReadOnlyList<UnrealSymbol> added)
+        {
+            var removed = _allSymbols
+                .Where(s => string.Equals(s.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            _allSymbols.RemoveAll(s => string.Equals(s.FilePath, filePath, StringComparison.OrdinalIgnoreCase));
+
+            foreach (var r in removed)
+            {
+                if (r.Id != 0) _byId.Remove(r.Id);
+                if (!_symbolsByName.TryGetValue(r.Name, out var list)) continue;
+                list.Remove(r);
+                if (list.Count == 0)
+                {
+                    _symbolsByName.Remove(r.Name);
+                    int idx = _sortedNames.BinarySearch(r.Name, StringComparer.OrdinalIgnoreCase);
+                    if (idx >= 0) _sortedNames.RemoveAt(idx);
+                }
+            }
+
+            foreach (var a in added)
+            {
+                if (a.Id != 0) _byId[a.Id] = a;
+                if (!_symbolsByName.TryGetValue(a.Name, out var list))
+                {
+                    list = new List<UnrealSymbol>();
+                    _symbolsByName[a.Name] = list;
+                    int idx = _sortedNames.BinarySearch(a.Name, StringComparer.OrdinalIgnoreCase);
+                    _sortedNames.Insert(idx < 0 ? ~idx : idx, a.Name);
+                }
+                list.Add(a);
+            }
+
+            _allSymbols.AddRange(added);
+        }
+
+        /// <summary>
+        /// Camel-hump match: first char matches, then each pattern char must hit an uppercase/underscore-start
+        /// hump or continue the previous match. E.g. "AMyC" matches "AMyCharacter", "BP" matches "BeginPlay".
+        /// </summary>
+        private static bool IsCamelHumpMatch(string pattern, string name)
+        {
+            return HumpMatch(pattern, 0, name, 0, false);
+        }
+
+        private static bool HumpMatch(string p, int pi, string n, int ni, bool prevMatched)
+        {
+            if (pi == p.Length) return true;
+            for (; ni < n.Length; ni++)
+            {
+                if (char.ToLowerInvariant(p[pi]) != char.ToLowerInvariant(n[ni])) { if (pi == 0) return false; prevMatched = false; continue; }
+                bool isHump = ni == 0 || char.IsUpper(n[ni]) || n[ni - 1] == '_';
+                bool contiguous = prevMatched && ni > 0;
+                if (pi == 0 ? ni == 0 : (isHump || contiguous))
+                {
+                    if (HumpMatch(p, pi + 1, n, ni + 1, true)) return true;
+                }
+                if (pi == 0) return false;
+                prevMatched = false;
+            }
+            return false;
         }
 
         /// <summary>Binary search for all names starting with <paramref name="prefix"/>.</summary>

@@ -11,6 +11,12 @@ namespace PenguinExtention.Models
     {
         public long Id { get; set; }
 
+        // Core IDs are opaque, revision-scoped strings, never legacy database IDs.
+        public string CoreId { get; set; }
+        public string MacroName { get; set; }
+        public string[] Bases { get; set; } = new string[0];
+        public string Specifiers { get; set; }
+
         /// <summary>Short name (e.g. "ACharacter", "BeginPlay", "Health").</summary>
         public string Name { get; set; }
 

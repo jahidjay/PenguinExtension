@@ -1,0 +1,10 @@
+{
+  "protocolVersion": 1,
+  "sessionId": "opaque-session-reference",
+  "state": "ready",
+  "roots": [
+    "/workspace/Game"
+  ],
+  "files": 1,
+  "symbols": 3
+}

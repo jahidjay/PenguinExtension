@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using PenguinExtention.Models;
 using PenguinExtention.Services;
+using PenguinExtention.Core;
+using Microsoft.VisualStudio.Shell;
 
 namespace PenguinExtention.UI
 {
@@ -80,83 +82,40 @@ namespace PenguinExtention.UI
                     NavigateRequested?.Invoke(sym);
             });
 
-            // Listen for cache ready events
-            if (CacheService.Instance != null)
-            {
-                CacheService.Instance.CacheReady += (s, e) =>
-                {
-                    UpdateStatus();
-                    DebouncedSearch();
-                };
-            }
-
             UpdateStatus();
         }
 
-        // ── Search logic ────────────────────────────────────────────
+        public void Refresh() => DebouncedSearch();
+        public void CancelSearch() { _searchCts?.Cancel(); }
 
         private async void DebouncedSearch()
         {
-            // Cancel any previous search
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             _searchCts?.Cancel();
-            _searchCts = new CancellationTokenSource();
-            var token = _searchCts.Token;
-
+            var cts = new CancellationTokenSource();
+            _searchCts = cts;
+            var token = cts.Token;
+            var query = _searchText;
+            var kinds = GetAllowedKinds();
+            var engine = _filterEngineSymbols;
+            var project = _filterProjectSymbols;
             try
             {
                 await Task.Delay(150, token).ConfigureAwait(false);
-                if (token.IsCancellationRequested) return;
-
-                ExecuteSearch();
-            }
-            catch (TaskCanceledException) { }
-        }
-
-        private void ExecuteSearch()
-        {
-            var cache = CacheService.Instance;
-            if (cache == null || !cache.IsLoaded)
-            {
-                System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
-                {
-                    FilteredSymbols.Clear();
-                    StatusText = "Cache not loaded";
-                });
-                return;
-            }
-
-            List<UnrealSymbol> results;
-
-            if (string.IsNullOrWhiteSpace(_searchText))
-            {
-                // Show recently used / top symbols when search is empty
-                results = cache.GetAllSymbols(limit: 200);
-            }
-            else
-            {
-                results = cache.Search(_searchText, kindFilter: null, limit: 500);
-            }
-
-            // Apply kind filters
-            var allowedKinds = GetAllowedKinds();
-            results = results.Where(s =>
-            {
-                if (!allowedKinds.Contains(s.Kind)) return false;
-                if (s.IsEngineSymbol && !_filterEngineSymbols) return false;
-                if (!s.IsEngineSymbol && !_filterProjectSymbols) return false;
-                return true;
-            }).Take(300).ToList();
-
-            // Update on UI thread
-            System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
-            {
+                var results = await BackendService.SearchAsync(query, 500, token).ConfigureAwait(false);
+                results = results.Where(s => kinds.Contains(s.Kind) && (s.IsEngineSymbol ? engine : project)).Take(300).ToList();
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(token);
+                token.ThrowIfCancellationRequested();
                 FilteredSymbols.Clear();
-                foreach (var sym in results)
-                    FilteredSymbols.Add(sym);
-
-                var total = cache.SymbolCount;
-                StatusText = $"Showing {results.Count} of {total:N0} indexed symbols";
-            });
+                foreach (var sym in results) FilteredSymbols.Add(sym);
+                StatusText = BackendService.Status + $" - {results.Count} results (bounded search)";
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                if (!token.IsCancellationRequested) { FilteredSymbols.Clear(); StatusText = ex.Message; }
+            }
         }
 
         private HashSet<UnrealSymbolKind> GetAllowedKinds()
@@ -171,16 +130,7 @@ namespace PenguinExtention.UI
             return kinds;
         }
 
-        private void UpdateStatus()
-        {
-            var cache = CacheService.Instance;
-            if (cache == null)
-                StatusText = "Initializing...";
-            else if (!cache.IsLoaded)
-                StatusText = "Loading cache...";
-            else
-                StatusText = $"Indexed: {cache.SymbolCount:N0} symbols";
-        }
+        private void UpdateStatus() => StatusText = BackendService.Status;
 
         // ── INotifyPropertyChanged ──────────────────────────────────
 

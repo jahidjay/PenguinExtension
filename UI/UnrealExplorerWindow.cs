@@ -33,7 +33,7 @@ namespace PenguinExtention.UI
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            if (symbol == null || !System.IO.File.Exists(symbol.FilePath))
+            if (symbol == null)
                 return;
 
             var package = (AsyncPackage)Package;
@@ -59,7 +59,7 @@ namespace PenguinExtention.UI
             }
 
             // Record usage
-            Services.CacheService.Instance?.RecordUsage(symbol.Id);
+            Core.BackendService.RecordUsage(symbol);
         }
     }
 }

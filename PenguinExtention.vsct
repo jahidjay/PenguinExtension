@@ -18,9 +18,18 @@
       </Menu>
     </Menus>
 
-    <!-- Command group inside our sub-menu -->
+    <!-- Command groups inside our sub-menu -->
     <Groups>
-      <Group guid="guidPenguinExtensionCmdSet" id="PenguinMenuGroup" priority="0x0600">
+      <!-- Navigation group -->
+      <Group guid="guidPenguinExtensionCmdSet" id="PenguinNavGroup" priority="0x0100">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinSubMenu"/>
+      </Group>
+      <!-- Refactoring group -->
+      <Group guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup" priority="0x0200">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinSubMenu"/>
+      </Group>
+      <!-- Windows group -->
+      <Group guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup" priority="0x0300">
         <Parent guid="guidPenguinExtensionCmdSet" id="PenguinSubMenu"/>
       </Group>
     </Groups>
@@ -30,7 +39,7 @@
       <!-- Go To Unreal Definition -->
       <Button guid="guidPenguinExtensionCmdSet" id="GoToUnrealDefinitionId"
               priority="0x0100" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinMenuGroup"/>
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinNavGroup"/>
         <Strings>
           <ButtonText>Go To Unreal Definition</ButtonText>
           <ToolTipText>Navigate to the Unreal Engine definition of the symbol under the cursor (Ctrl+Shift+U, D)</ToolTipText>
@@ -40,11 +49,75 @@
       <!-- Open Unreal Explorer -->
       <Button guid="guidPenguinExtensionCmdSet" id="OpenUnrealExplorerId"
               priority="0x0200" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinMenuGroup"/>
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
         <Strings>
           <ButtonText>Open Unreal Explorer</ButtonText>
           <ToolTipText>Open the Unreal Symbol Explorer tool window (Ctrl+Shift+U, E)</ToolTipText>
         </Strings>
+      </Button>
+
+      <!-- Generate Implementation -->
+      <Button guid="guidPenguinExtensionCmdSet" id="GenerateImplementationId"
+              priority="0x0100" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
+        <Strings>
+          <ButtonText>Generate Implementation (.cpp)</ButtonText>
+          <ToolTipText>Generate a .cpp skeleton from the function declaration on the current line (Ctrl+Shift+U, I)</ToolTipText>
+        </Strings>
+      </Button>
+
+      <!-- Generate Getter/Setter -->
+      <Button guid="guidPenguinExtensionCmdSet" id="GenerateGetterSetterId"
+              priority="0x0200" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
+        <Strings>
+          <ButtonText>Generate Getter/Setter</ButtonText>
+          <ToolTipText>Generate Get/Set methods from the UPROPERTY on the current line (Ctrl+Shift+U, G)</ToolTipText>
+        </Strings>
+      </Button>
+
+      <!-- Open Symbol Inspector -->
+      <Button guid="guidPenguinExtensionCmdSet" id="OpenSymbolInspectorId"
+              priority="0x0300" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Strings>
+          <ButtonText>Symbol Inspector</ButtonText>
+          <ToolTipText>Open the Symbol Inspector window showing live documentation (Ctrl+Shift+U, S)</ToolTipText>
+        </Strings>
+      </Button>
+
+      <!-- Open Shortcuts Reference -->
+      <Button guid="guidPenguinExtensionCmdSet" id="OpenShortcutsReferenceId"
+              priority="0x0400" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Strings>
+          <ButtonText>Keyboard Shortcuts</ButtonText>
+          <ToolTipText>Show all PenguinExtension keyboard shortcuts (Ctrl+Shift+U, K)</ToolTipText>
+        </Strings>
+      </Button>
+      <Button guid="guidPenguinExtensionCmdSet" id="CoreStatusId" priority="0x0700" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Strings><ButtonText>Backend Status</ButtonText></Strings>
+      </Button>
+      <Button guid="guidPenguinExtensionCmdSet" id="CoreReindexId" priority="0x0701" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Strings><ButtonText>Reindex Core Workspace</ButtonText></Strings>
+      </Button>
+      <Button guid="guidPenguinExtensionCmdSet" id="RestartBackendId" priority="0x0702" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Strings><ButtonText>Restart Backend</ButtonText></Strings>
+      </Button>
+      <Button guid="guidPenguinExtensionCmdSet" id="AIExplainId" priority="0x0710" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Strings><ButtonText>AI Explain Selection (Preview Only)</ButtonText></Strings>
+      </Button>
+      <Button guid="guidPenguinExtensionCmdSet" id="AIGenerateId" priority="0x0711" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Strings><ButtonText>AI Proposed Implementation (Preview Only)</ButtonText></Strings>
+      </Button>
+      <Button guid="guidPenguinExtensionCmdSet" id="CancelCoreJobId" priority="0x0712" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Strings><ButtonText>Cancel Core Action</ButtonText></Strings>
       </Button>
     </Buttons>
 
@@ -52,17 +125,41 @@
 
   <!-- Key bindings -->
   <KeyBindings>
-    <!-- Ctrl+Shift+U, D → Go To Unreal Definition (two-chord shortcut) -->
+    <!-- Ctrl+Shift+U, D → Go To Unreal Definition -->
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToUnrealDefinitionId"
                 editor="guidVSStd97"
                 key1="U" mod1="Control Shift"
                 key2="D"/>
 
-    <!-- Ctrl+Shift+U, E → Open Unreal Explorer (two-chord shortcut) -->
+    <!-- Ctrl+Shift+U, E → Open Unreal Explorer -->
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenUnrealExplorerId"
                 editor="guidVSStd97"
                 key1="U" mod1="Control Shift"
                 key2="E"/>
+
+    <!-- Ctrl+Shift+U, I → Generate Implementation -->
+    <KeyBinding guid="guidPenguinExtensionCmdSet" id="GenerateImplementationId"
+                editor="guidVSStd97"
+                key1="U" mod1="Control Shift"
+                key2="I"/>
+
+    <!-- Ctrl+Shift+U, G → Generate Getter/Setter -->
+    <KeyBinding guid="guidPenguinExtensionCmdSet" id="GenerateGetterSetterId"
+                editor="guidVSStd97"
+                key1="U" mod1="Control Shift"
+                key2="G"/>
+
+    <!-- Ctrl+Shift+U, S → Symbol Inspector -->
+    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenSymbolInspectorId"
+                editor="guidVSStd97"
+                key1="U" mod1="Control Shift"
+                key2="S"/>
+
+    <!-- Ctrl+Shift+U, K → Keyboard Shortcuts -->
+    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenShortcutsReferenceId"
+                editor="guidVSStd97"
+                key1="U" mod1="Control Shift"
+                key2="K"/>
   </KeyBindings>
 
   <!-- GUID and ID symbol definitions — must match PenguinExtensionCommandIds.cs -->
@@ -72,10 +169,22 @@
 
     <GuidSymbol name="guidPenguinExtensionCmdSet"
                 value="{E5A3C1D9-4B2F-4E8A-B6D0-7C9F1A5E3D2B}">
-      <IDSymbol name="PenguinSubMenu"             value="0x1000"/>
-      <IDSymbol name="PenguinMenuGroup"            value="0x1050"/>
-      <IDSymbol name="GoToUnrealDefinitionId"      value="0x0100"/>
-      <IDSymbol name="OpenUnrealExplorerId"        value="0x0200"/>
+      <IDSymbol name="PenguinSubMenu"              value="0x1000"/>
+      <IDSymbol name="PenguinNavGroup"              value="0x1050"/>
+      <IDSymbol name="PenguinRefactorGroup"         value="0x1060"/>
+      <IDSymbol name="PenguinWindowsGroup"          value="0x1070"/>
+      <IDSymbol name="GoToUnrealDefinitionId"       value="0x0100"/>
+      <IDSymbol name="OpenUnrealExplorerId"         value="0x0200"/>
+      <IDSymbol name="GenerateImplementationId"     value="0x0300"/>
+      <IDSymbol name="GenerateGetterSetterId"       value="0x0400"/>
+      <IDSymbol name="OpenSymbolInspectorId"        value="0x0500"/>
+      <IDSymbol name="OpenShortcutsReferenceId"     value="0x0600"/>
+      <IDSymbol name="CoreStatusId" value="0x0700"/>
+      <IDSymbol name="CoreReindexId" value="0x0701"/>
+      <IDSymbol name="RestartBackendId" value="0x0702"/>
+      <IDSymbol name="AIExplainId" value="0x0710"/>
+      <IDSymbol name="AIGenerateId" value="0x0711"/>
+      <IDSymbol name="CancelCoreJobId" value="0x0712"/>
     </GuidSymbol>
   </Symbols>
 

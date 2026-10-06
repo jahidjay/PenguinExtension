@@ -1,160 +1,72 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using PenguinExtention.Database;
 
 namespace PenguinExtention.Services
 {
-    /// <summary>
-    /// Watches the project source directory for file changes and triggers re-indexing
-    /// of modified files.  Uses a 500ms debounce timer to batch rapid saves.
-    /// Does NOT watch engine source (too large, rarely changes).
-    /// </summary>
+    // A single drainable worker owns incremental legacy writes. Dispose never races DB shutdown.
     internal sealed class IncrementalIndexer : IDisposable
     {
         private readonly UnrealIndexer _indexer;
         private readonly CacheService _cache;
-        private FileSystemWatcher _watcher;
-        private readonly ConcurrentDictionary<string, DateTime> _pendingChanges = new ConcurrentDictionary<string, DateTime>();
-        private Timer _debounceTimer;
+        private readonly ConcurrentDictionary<string, bool> _pending = new ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+        private FileSystemWatcher _watcher;
+        private Task _worker = Task.CompletedTask;
         private bool _disposed;
-
-        private const int DebounceMs = 500;
-
-        public IncrementalIndexer(UnrealIndexer indexer, CacheService cache)
+        public IncrementalIndexer(UnrealIndexer indexer, CacheService cache) { _indexer = indexer; _cache = cache; }
+        public void Start(string root)
         {
-            _indexer = indexer;
-            _cache = cache;
+            if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) return;
+            _watcher = new FileSystemWatcher(root) { IncludeSubdirectories = true, Filter = "*.*",
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.CreationTime };
+            _watcher.Changed += Changed; _watcher.Created += Changed; _watcher.Deleted += Deleted; _watcher.Renamed += Renamed;
+            _worker = Task.Run(DrainAsync);
+            _watcher.EnableRaisingEvents = true;
         }
-
-        /// <summary>
-        /// Starts watching <paramref name="projectSourceRoot"/> for .h/.cpp file changes.
-        /// </summary>
-        public void Start(string projectSourceRoot)
-        {
-            if (string.IsNullOrEmpty(projectSourceRoot) || !Directory.Exists(projectSourceRoot))
-                return;
-
-            _watcher = new FileSystemWatcher(projectSourceRoot)
-            {
-                IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.CreationTime,
-                EnableRaisingEvents = true
-            };
-
-            // Watch C++ source files
-            _watcher.Filter = "*.*"; // We filter in the handler
-
-            _watcher.Changed += OnFileChanged;
-            _watcher.Created += OnFileChanged;
-            _watcher.Renamed += OnFileRenamed;
-            _watcher.Deleted += OnFileDeleted;
-
-            _debounceTimer = new Timer(ProcessPendingChanges, null, Timeout.Infinite, Timeout.Infinite);
-        }
-
-        // ── Event handlers ──────────────────────────────────────────
-
-        private void OnFileChanged(object sender, FileSystemEventArgs e)
-        {
-            if (!IsSourceFile(e.FullPath)) return;
-
-            _pendingChanges[e.FullPath] = DateTime.UtcNow;
-            RestartDebounceTimer();
-        }
-
-        private void OnFileRenamed(object sender, RenamedEventArgs e)
-        {
-            // Treat rename as delete old + create new
-            if (IsSourceFile(e.OldFullPath))
-            {
-                Task.Run(() => _cache.RemoveFileSymbolsAsync(e.OldFullPath));
-            }
-
-            if (IsSourceFile(e.FullPath))
-            {
-                _pendingChanges[e.FullPath] = DateTime.UtcNow;
-                RestartDebounceTimer();
-            }
-        }
-
-        private void OnFileDeleted(object sender, FileSystemEventArgs e)
-        {
-            if (!IsSourceFile(e.FullPath)) return;
-
-            Task.Run(() => _cache.RemoveFileSymbolsAsync(e.FullPath));
-        }
-
-        // ── Debounce processing ─────────────────────────────────────
-
-        private void RestartDebounceTimer()
-        {
-            _debounceTimer?.Change(DebounceMs, Timeout.Infinite);
-        }
-
-        private void ProcessPendingChanges(object state)
-        {
-            if (_cts.IsCancellationRequested) return;
-
-            // Snapshot and clear pending changes
-            var files = _pendingChanges.Keys.ToArray();
-            foreach (var f in files)
-                _pendingChanges.TryRemove(f, out _);
-
-            // Re-index each changed file
-            Task.Run(async () =>
-            {
-                foreach (var filePath in files)
-                {
-                    if (_cts.IsCancellationRequested) break;
-
-                    try
-                    {
-                        await _indexer.IndexSingleFileAsync(filePath, isEngine: false, _cts.Token).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException) { break; }
-                    catch { /* log and continue */ }
-                }
-            });
-        }
-
-        // ── Helpers ─────────────────────────────────────────────────
-
-        private static bool IsSourceFile(string path)
+        private static bool Source(string path)
         {
             var ext = Path.GetExtension(path);
-            if (string.IsNullOrEmpty(ext)) return false;
-
-            return ext.Equals(".h", StringComparison.OrdinalIgnoreCase) ||
-                   ext.Equals(".hpp", StringComparison.OrdinalIgnoreCase) ||
-                   ext.Equals(".cpp", StringComparison.OrdinalIgnoreCase);
+            return ext.Equals(".h", StringComparison.OrdinalIgnoreCase) || ext.Equals(".hpp", StringComparison.OrdinalIgnoreCase) || ext.Equals(".cpp", StringComparison.OrdinalIgnoreCase);
         }
-
-        // ── IDisposable ─────────────────────────────────────────────
-
+        private void Changed(object s, FileSystemEventArgs e) { if (Source(e.FullPath)) _pending[e.FullPath] = false; }
+        private void Deleted(object s, FileSystemEventArgs e) { if (Source(e.FullPath)) _pending[e.FullPath] = true; }
+        private void Renamed(object s, RenamedEventArgs e)
+        {
+            if (Source(e.OldFullPath)) _pending[e.OldFullPath] = true;
+            if (Source(e.FullPath)) _pending[e.FullPath] = false;
+        }
+        private async Task DrainAsync()
+        {
+            try
+            {
+                while (true)
+                {
+                    await Task.Delay(500, _cts.Token).ConfigureAwait(false);
+                    foreach (var path in _pending.Keys)
+                    {
+                        _cts.Token.ThrowIfCancellationRequested();
+                        bool deleted;
+                        if (!_pending.TryRemove(path, out deleted)) continue;
+                        try
+                        {
+                            if (deleted) await _cache.RemoveFileSymbolsAsync(path).ConfigureAwait(false);
+                            else await _indexer.IndexSingleFileAsync(path, false, _cts.Token).ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException) { throw; }
+                        catch (Exception ex) { System.Diagnostics.Trace.WriteLine(ex); }
+                    }
+                }
+            }
+            catch (OperationCanceledException) { }
+        }
+        public async Task StopAsync() { Dispose(); await _worker.ConfigureAwait(false); }
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true;
-
-            _cts.Cancel();
-            _debounceTimer?.Dispose();
-
-            if (_watcher != null)
-            {
-                _watcher.EnableRaisingEvents = false;
-                _watcher.Changed -= OnFileChanged;
-                _watcher.Created -= OnFileChanged;
-                _watcher.Renamed -= OnFileRenamed;
-                _watcher.Deleted -= OnFileDeleted;
-                _watcher.Dispose();
-            }
-
-            _cts.Dispose();
+            _disposed = true; _cts.Cancel(); _watcher?.Dispose();
         }
     }
 }

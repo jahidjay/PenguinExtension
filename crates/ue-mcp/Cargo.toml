@@ -1,0 +1,22 @@
+[package]
+name = "ue-mcp"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+
+[[bin]]
+name = "penguin-mcp"
+path = "src/main.rs"
+
+[dependencies]
+rmcp = { version = "=3.5.1", default-features = false, features = ["server", "transport-io"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["rt"] }
+ue-core = { path = "../ue-core" }
+ue-ai = { path = "../ue-ai" }
+ue-style = { path = "../ue-style" }
+
+[dev-dependencies]
+tempfile = "3"

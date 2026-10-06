@@ -1,0 +1,31 @@
+{
+  "name": "penguin-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "npm run typecheck && vite build",
+    "tauri": "tauri",
+    "desktop:dev": "tauri dev",
+    "desktop:build": "tauri build --features custom-protocol",
+    "native:check": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "native:test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "format:check": "prettier --check src tests vite.config.ts tsconfig.json package.json index.html",
+    "desktop:portable": "tauri build --features custom-protocol --no-bundle"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.9.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.6",
+    "@types/node": "^24.19.1",
+    "jsdom": "^26.1.0",
+    "prettier": "^3.9.9",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^4.1.11"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "opaque-session-revision-reference",
+  "name": "AExampleActor",
+  "kind": "class",
+  "macroName": "UCLASS",
+  "file": "/workspace/Game/Source/ExampleActor.h",
+  "line": 3,
+  "typeName": null,
+  "specifiers": [
+    {
+      "key": "Blueprintable",
+      "value": null
+    }
+  ],
+  "bases": [
+    "AActor"
+  ],
+  "signature": "class AExampleActor : public AActor",
+  "documentation": "Example fixture documentation.",
+  "owner": null,
+  "qualifiedName": "AExampleActor"
+}

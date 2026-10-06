@@ -1,18 +1,83 @@
-# PenguinExtension
+# PenguinExtension / PenguinCore
 
-A lightweight and fast Visual Studio 2022 VSIX extension designed for Unreal Engine C++ developers. It provides Rider-like navigation, auto-completion, hover documentation, and a dedicated Symbol Explorer—all powered by a persistent SQLite cache database and asynchronous background indexing that never blocks the editor UI.
+Unreal Engine reflected-symbol tooling with a shared Rust implementation and thin editor/desktop clients. The existing Visual Studio extension remains available as the Legacy backend while Core integration is validated.
 
----
+## Components
 
-## Key Features
+| Component | Source | Role |
+| --- | --- | --- |
+| Parser | `crates/ue-parser` | tree-sitter C++ extraction with Unreal reflection macros |
+| Storage | `crates/ue-db` | Transactional SQLite cache using WAL |
+| Shared service | `crates/ue-core` | Workspace validation, indexing, queries and jobs |
+| Style | `crates/ue-style` | Conservative reflection checks, optional naming rules |
+| Local AI | `crates/ue-ai` | Bounded, explicit Ollama previews; no autonomous edits |
+| LSP | `crates/ue-lsp` | `penguin-lsp`, FULL editor sync and live-buffer overlays |
+| MCP | `crates/ue-mcp` | `penguin-mcp`, source-read-only local tools |
+| VS Code-compatible | `apps/vscode-ext` | LSP client with bundled native server |
+| Visual Studio | Root VSIX + `apps/vs-client` | Legacy/Core backend integration |
+| Desktop | `apps/desktop-tauri` | Tauri 2 local workspace browser and previews |
 
-*   **Fast Autocomplete**: Fast C++ auto-suggestions served directly from a memory-hydrated symbol cache.
-*   **Unreal Symbol Explorer**: A dedicated tool window (docked to the left by default) that lists classes, structs, enums, functions, and delegates with inheritance chains.
-*   **Go To Unreal Definition**: Quick keyboard shortcut (`Ctrl+Shift+U`, `D`) to navigate directly to the definition of any Unreal symbol.
-*   **Hover QuickInfo**: Custom tooltips displaying class hierarchies, function signatures, file locations, and doc-comments.
-*   **Zero-Blocking UI**: Background indexing and cache hydration run completely asynchronously.
+See the [verification ledger](docs/verification.md) for measured results. Component presence or a successful compile is not a claim that every IDE/platform has been tested.
 
----
+## Build locally
+
+Prerequisites: Rust and a C/C++ compiler, Node.js/npm for TypeScript apps; Visual Studio with extension-development tools and .NET Framework 4.7.2 for the VSIX; platform webview prerequisites for Tauri.
+
+```bash
+bash setup_all.sh --check
+cargo test --workspace
+bash scripts/build-core.sh
+python -m unittest discover -s scripts -p 'test_*.py'
+```
+
+`setup_all.sh` checks prerequisites without overwriting source, installing toolchains, changing global defaults, or downloading models. Pass `--restore` for an explicit locked Rust dependency fetch.
+
+The headless Rust workspace and native desktop crate have separate build entry points. Build the TypeScript apps from their directories with `npm ci`, `npm run typecheck`, `npm test`, and `npm run build`. Client READMEs describe runtime commands and settings.
+
+For the Visual Studio package, use full MSBuild rather than relying on `dotnet build` for legacy VSSDK targets:
+
+```powershell
+pwsh -File scripts/build-vsix.ps1
+```
+
+This builds and inspects a local package; it does not install it. Use `-MSBuildPath` to select a specific installed toolchain. The VSIX installation range remains conservative until isolated IDE runtime validation supports widening it.
+
+For VS Code, first build the release server and run `python scripts/stage-vscode-server.py`, then package from `apps/vscode-ext`. Packages need the matching OS/architecture binary; end users should not need Cargo.
+
+## Safety and data boundaries
+
+- Project source stays local. AI is disabled by default and accepts only a loopback Ollama endpoint; no cloud inference, implicit model pulls, or service startup.
+- The documented default is `qwen2.5-coder:3b`. Install/select a model deliberately; an absent model is an error, not permission to substitute another.
+- AI returns preview text, never shell commands to execute or edits to apply automatically.
+- Disk indexing is root-scoped, excludes generated/build/cache directories, rejects unsupported encodings/oversized headers, and does not follow symlinks or junctions.
+- Core uses separate cache namespaces and writer ownership. The legacy `.vs/PenguinExtension/penguin_cache.db` is not repurposed.
+- Unsaved buffers belong to their LSP session; desktop/MCP results are disk-backed.
+- No formatter, compiler-equivalent C++ type/member resolution, or unrestricted refactoring is promised. Unknown/ambiguous facts remain unknown/ambiguous.
+
+## Documentation
+
+- [Thin-client protocol and DTOs](docs/penguin-protocol.md)
+- [Build and package helpers](scripts/README.md)
+- [Isolated manual acceptance](docs/manual-acceptance.md)
+- [Verification ledger and platform limits](docs/verification.md)
+- [LSP behavior and tests](crates/ue-lsp/README.md)
+
+## Existing Visual Studio shortcuts
+
+All use the first chord **Ctrl+Shift+U**, then:
+
+| Key | Command |
+| --- | --- |
+| D | Go To Unreal Definition |
+| E | Unreal Explorer |
+| I | Generate Implementation |
+| G | Generate Getter/Setter |
+| S | Symbol Inspector |
+| K | Keyboard Shortcuts |
+
+## Legacy Visual Studio backend
+
+The following architecture describes the original C# backend, not the Rust Core backend. Preserve its behavior while testing the explicitly selected Core backend in an experimental IDE profile.
 
 ## Architecture Overview
 

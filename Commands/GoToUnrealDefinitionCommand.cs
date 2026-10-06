@@ -6,6 +6,10 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.TextManager.Interop;
 using PenguinExtention.Services;
+using PenguinExtention.Core;
+using System.Threading;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace PenguinExtention.Commands
 {
@@ -38,56 +42,49 @@ namespace PenguinExtention.Commands
             Instance = new GoToUnrealDefinitionCommand(package, commandService);
         }
 
-        private void Execute(object sender, EventArgs e)
+        private void Execute(object sender, EventArgs e) => _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
         {
-            ThreadHelper.ThrowIfNotOnUIThread();
+            try { await ExecuteAsync(); }
+            catch (OperationCanceledException) { }
+            catch (Exception ex) { await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(); ShowStatusMessage(ex.Message); }
+        });
 
-            var cache = CacheService.Instance;
-            if (cache == null || !cache.IsLoaded)
+        private async Task ExecuteAsync()
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            if (!BackendService.IsReady) { ShowStatusMessage(BackendService.Status); return; }
+            if (BackendService.IsCore)
             {
-                ShowStatusMessage("PenguinExtension: Cache not loaded yet.");
+                var view = EditorAccess.ActiveView();
+                if (view == null) return;
+                var result = await DocumentSync.RequestAsync("textDocument/definition", view.Caret.Position.BufferPosition, _package.DisposalToken);
+                var target = result is JArray array ? array.FirstOrDefault() : result;
+                if (target == null || target.Type == JTokenType.Null) { ShowStatusMessage("Core: No definition found."); return; }
+                var uri = (string)target?["uri"] ?? (string)target?["targetUri"];
+                var start = target?["range"]?["start"] ?? target?["targetSelectionRange"]?["start"];
+                if (uri == null) { ShowStatusMessage("Core: No definition found."); return; }
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                NavigateToSymbol(new Models.UnrealSymbol { FilePath = new Uri(uri).LocalPath,
+                    LineNumber = ((int?)start?["line"] ?? 0) + 1, ColumnNumber = (int?)start?["character"] ?? 0 });
                 return;
             }
-
-            // Get the word under the cursor
             var word = GetWordUnderCursor();
-            if (string.IsNullOrEmpty(word))
-            {
-                ShowStatusMessage("PenguinExtension: No identifier under cursor.");
-                return;
-            }
-
-            // Look up in cache
-            var symbols = cache.GetByExactName(word);
+            if (string.IsNullOrEmpty(word)) return;
+            var symbols = await BackendService.ExactAsync(word, _package.DisposalToken);
             if (symbols.Count == 0)
             {
-                ShowStatusMessage($"PenguinExtension: No Unreal definition found for '{word}'.");
+                await TryNavigateToEngineMacroAsync(word);
                 return;
             }
-
-            // Pick the best match (prefer project symbols, then by access count)
-            var target = symbols
-                .OrderBy(s => s.IsEngineSymbol ? 1 : 0)
-                .ThenByDescending(s => s.AccessCount)
-                .First();
-
-            // If multiple matches and they're in different files, try to pick the best one
-            // For now, just go to the first match
-            NavigateToSymbol(target);
-            cache.RecordUsage(target.Id);
-
-            ShowStatusMessage($"PenguinExtension: Navigated to {target.DisplayText} in {System.IO.Path.GetFileName(target.FilePath)}");
+            var symbol = symbols.OrderBy(s => s.IsEngineSymbol ? 1 : 0).ThenByDescending(s => s.AccessCount).First();
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+            NavigateToSymbol(symbol);
+            BackendService.RecordUsage(symbol);
         }
 
         private void NavigateToSymbol(Models.UnrealSymbol symbol)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
-
-            if (!System.IO.File.Exists(symbol.FilePath))
-            {
-                ShowStatusMessage($"PenguinExtension: File not found: {symbol.FilePath}");
-                return;
-            }
 
             // Open the document
             VsShellUtilities.OpenDocument(
@@ -114,20 +111,17 @@ namespace PenguinExtention.Commands
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            var textManager = Package.GetGlobalService(typeof(SVsTextManager)) as IVsTextManager;
-            if (textManager == null) return null;
-
-            textManager.GetActiveView(1, null, out IVsTextView activeView);
-            if (activeView == null) return null;
-
-            activeView.GetCaretPos(out int line, out int column);
-            activeView.GetTextStream(line, 0, line, 500, out string lineText);
+            var editor = EditorAccess.ActiveView();
+            if (editor == null) return null;
+            var caret = editor.Caret.Position.BufferPosition;
+            var line = caret.GetContainingLine();
+            var lineText = line.GetText();
 
             if (string.IsNullOrEmpty(lineText)) return null;
 
             // Find word boundaries
-            int start = column;
-            int end = column;
+            int start = Math.Min(caret.Position - line.Start.Position, lineText.Length);
+            int end = start;
 
             while (start > 0 && IsIdentifierChar(lineText[start - 1]))
                 start--;
@@ -151,6 +145,64 @@ namespace PenguinExtention.Commands
 
             var statusBar = Package.GetGlobalService(typeof(SVsStatusbar)) as IVsStatusbar;
             statusBar?.SetText(message);
+        }
+
+        // ── Engine macro fallback ───────────────────────────────────
+
+        // ponytail: known UE macros that live in ObjectMacros.h
+        private static readonly System.Collections.Generic.HashSet<string> KnownEngineMacros =
+            new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal)
+            {
+                "UCLASS", "USTRUCT", "UENUM", "UFUNCTION", "UPROPERTY",
+                "UINTERFACE", "UMETA", "UPARAM",
+                "GENERATED_BODY", "GENERATED_UCLASS_BODY", "GENERATED_USTRUCT_BODY",
+                "DECLARE_DYNAMIC_MULTICAST_DELEGATE", "DECLARE_DELEGATE",
+            };
+
+        /// <summary>
+        /// If the word is a known UE macro keyword, navigate to ObjectMacros.h in the engine source.
+        /// Returns true if navigation was attempted.
+        /// </summary>
+        private async Task<bool> TryNavigateToEngineMacroAsync(string word)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+
+            // Check prefix match for DECLARE_* family
+            bool isMacro = KnownEngineMacros.Contains(word)
+                        || word.StartsWith("DECLARE_", StringComparison.Ordinal);
+
+            if (!isMacro)
+                return false;
+
+            var detector = UnrealProjectDetector.Instance;
+            if (detector == null || string.IsNullOrEmpty(detector.EngineSourceRoot))
+            {
+                ShowStatusMessage("PenguinExtension: Engine source path not found. Set it in Tools → Options → PenguinExtension.");
+                return true; // we handled it (with an error), don't fall through to "not found"
+            }
+
+            // ObjectMacros.h is at a well-known stable path in every UE version
+            var objectMacrosPath = System.IO.Path.Combine(
+                detector.EngineSourceRoot, "Runtime", "CoreUObject", "Public", "UObject", "ObjectMacros.h");
+
+            if (!await Task.Run(() => System.IO.File.Exists(objectMacrosPath)))
+            {
+                ShowStatusMessage($"PenguinExtension: ObjectMacros.h not found at expected path.");
+                return true;
+            }
+
+            VsShellUtilities.OpenDocument(
+                _package,
+                objectMacrosPath,
+                Guid.Empty,
+                out _,
+                out _,
+                out IVsWindowFrame windowFrame);
+
+            windowFrame?.Show();
+
+            ShowStatusMessage($"PenguinExtension: Opened {word} definition in ObjectMacros.h");
+            return true;
         }
     }
 }

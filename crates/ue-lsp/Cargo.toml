@@ -1,0 +1,27 @@
+[package]
+name = "ue-lsp"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "ue_lsp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "penguin-lsp"
+path = "src/main.rs"
+
+[dependencies]
+ue-core = { path = "../ue-core" }
+ue-ai = { path = "../ue-ai" }
+ue-style = { path = "../ue-style" }
+serde = { workspace = true }
+ue-parser = { path = "../ue-parser" }
+ue-db = { path = "../ue-db" }
+tower-lsp = { workspace = true }
+tower = "0.4"
+tokio = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,8 @@
+[package]
+name = "ue-parser"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tree-sitter = { workspace = true }
+tree-sitter-cpp = { workspace = true }

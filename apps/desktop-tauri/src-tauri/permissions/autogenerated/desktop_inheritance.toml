@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desktop-inheritance"
+description = "Enables the desktop_inheritance command without any pre-configured scope."
+commands.allow = ["desktop_inheritance"]
+
+[[permission]]
+identifier = "deny-desktop-inheritance"
+description = "Denies the desktop_inheritance command without any pre-configured scope."
+commands.deny = ["desktop_inheritance"]

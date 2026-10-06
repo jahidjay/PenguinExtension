@@ -25,7 +25,8 @@ namespace PenguinExtention.UI
             InitializeComponent();
 
             // Focus search box when control loads
-            Loaded += (s, e) => SearchBox.Focus();
+            Loaded += (s, e) => { SearchBox.Focus(); _viewModel.Refresh(); Core.BackendService.Changed += BackendChanged; };
+            Unloaded += (s, e) => { Core.BackendService.Changed -= BackendChanged; _viewModel.CancelSearch(); };
         }
 
         /// <summary>
@@ -36,6 +37,15 @@ namespace PenguinExtention.UI
         {
             add => _viewModel.NavigateRequested += value;
             remove => _viewModel.NavigateRequested -= value;
+        }
+
+        private void BackendChanged()
+        {
+            _ = Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                if (IsLoaded) _viewModel.Refresh();
+            });
         }
 
         private void ResultsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)

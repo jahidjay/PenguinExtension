@@ -9,6 +9,8 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
 using PenguinExtention.Commands;
+using PenguinExtention.Core;
+using System.IO;
 using PenguinExtention.Database;
 using PenguinExtention.Services;
 using PenguinExtention.UI;
@@ -30,6 +32,12 @@ namespace PenguinExtention
                        Style = VsDockStyle.Linked,
                        Window = ToolWindowGuids.SolutionExplorer,
                        Orientation = ToolWindowOrientation.Left)]
+    [ProvideToolWindow(typeof(SymbolInspectorWindow),
+                       Style = VsDockStyle.Linked,
+                       Window = ToolWindowGuids.SolutionExplorer,
+                       Orientation = ToolWindowOrientation.Right)]
+    [ProvideToolWindow(typeof(ShortcutsReferenceWindow),
+                       Style = VsDockStyle.Float)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(PenguinOptionsPage),
                        "PenguinExtension", "General", 0, 0, true)]
@@ -41,6 +49,14 @@ namespace PenguinExtention
         private UnrealIndexer _indexer;
         private IncrementalIndexer _incrementalIndexer;
         private CancellationTokenSource _indexCts;
+        private Task _indexTask;
+        private CoreClientService _core;
+        private CoreFileWatcher _coreWatcher;
+        private CoreDiagnostics _diagnostics;
+        private SolutionEvents _solutionEvents;
+        private readonly SemaphoreSlim _lifecycle = new SemaphoreSlim(1, 1);
+        private CancellationTokenSource _workspaceCts;
+        internal static PenguinExtensionPackage Instance { get; private set; }
 
         // ── Package initialization ──────────────────────────────────
 
@@ -54,104 +70,137 @@ namespace PenguinExtention
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             await RegisterCommandsAsync().ConfigureAwait(true);
 
-            // Continue initialization on a background thread
-            await TaskScheduler.Default;
-            await InitializeExtensionAsync(cancellationToken).ConfigureAwait(false);
+            Instance = this;
+            _diagnostics = new CoreDiagnostics(this);
+            var solution = await GetServiceAsync(typeof(SVsSolution)) as IVsSolution;
+            _solutionEvents = new SolutionEvents(solution, () => RequestRestart());
+            PenguinOptionsPage.SettingsApplied += OnSettingsApplied;
+            BackendService.Changed += OnBackendChanged;
+            await RestartBackendAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        private async Task InitializeExtensionAsync(CancellationToken ct)
+        private void OnSettingsApplied(object sender, EventArgs e) => RequestRestart();
+        private void OnBackendChanged() => SetStatusBar("PenguinExtension: " + BackendService.Status);
+        internal void RequestRestart() => _ = BackendService.ObserveAsync(RestartBackendAsync(DisposalToken));
+
+        private async Task RestartBackendAsync(CancellationToken token)
         {
-            try
+            await JoinableTaskFactory.SwitchToMainThreadAsync(token);
+            _workspaceCts?.Cancel();
+            var requested = new CancellationTokenSource();
+            _workspaceCts = requested;
+            var options = (PenguinOptionsPage)GetDialogPage(typeof(PenguinOptionsPage));
+            BackendService.Reset(options);
+            var mode = options.Backend;
+            var engineOverride = options.EngineRootOverride;
+            var maxThreads = Math.Max(1, options.MaxIndexingThreads);
+            var indexEngine = options.IndexEngineSource;
+            var config = new CoreConfiguration
             {
-                // Step 1: Detect Unreal project
-                SetStatusBar("PenguinExtension: Detecting Unreal project...");
-
-                UnrealProjectDetector.CreateInstance();
-                var options = (PenguinOptionsPage)GetDialogPage(typeof(PenguinOptionsPage));
-                var engineOverride = options?.EngineRootOverride ?? string.Empty;
-
-                await UnrealProjectDetector.Instance.DetectAsync(this, engineOverride).ConfigureAwait(false);
-
-                if (!UnrealProjectDetector.Instance.IsUnrealProject)
+                Executable = string.IsNullOrWhiteSpace(options.CoreExecutableOverride)
+                    ? Path.Combine(Path.GetDirectoryName(typeof(PenguinExtensionPackage).Assembly.Location), "Core", "penguin-lsp.exe")
+                    : options.CoreExecutableOverride,
+                AIEnabled = options.EnableLocalAI, AIEndpoint = options.AIEndpoint, AIModel = options.AIModel
+            };
+            _diagnostics?.Clear();
+            using (var linked = CancellationTokenSource.CreateLinkedTokenSource(token, requested.Token))
+            {
+                var ct = linked.Token;
+                await TaskScheduler.Default;
+                await _lifecycle.WaitAsync(token).ConfigureAwait(false);
+                try
                 {
-                    SetStatusBar("PenguinExtension: Not an Unreal project. Extension inactive.");
-                    return;
-                }
-
-                var detector = UnrealProjectDetector.Instance;
-                WriteToOutputWindow($"Unreal project detected: {detector.UProjectFilePath}");
-                WriteToOutputWindow($"Project source: {detector.ProjectSourceRoot}");
-                WriteToOutputWindow($"Engine source: {detector.EngineSourceRoot ?? "(not found)"}");
-
-                // Step 2: Initialize database and load cache
-                SetStatusBar("PenguinExtension: Loading symbol cache...");
-
-                _db = new SQLiteCache(detector.SolutionDirectory);
-                CacheService.Initialize(_db);
-
-                var loader = new StartupCacheLoader(_db, CacheService.Instance);
-                var loadTime = await loader.LoadAsync().ConfigureAwait(false);
-
-                WriteToOutputWindow($"Cache loaded in {loadTime.TotalMilliseconds:F0}ms — {CacheService.Instance.SymbolCount:N0} symbols");
-                SetStatusBar($"PenguinExtension: Ready ({CacheService.Instance.SymbolCount:N0} cached symbols)");
-
-                // Step 3: Start background indexing
-                _indexCts = new CancellationTokenSource();
-                var maxThreads = options?.MaxIndexingThreads ?? (Environment.ProcessorCount / 2);
-                var indexEngine = options?.IndexEngineSource ?? true;
-
-                _indexer = new UnrealIndexer(_db, CacheService.Instance, maxThreads);
-
-                // Fire-and-forget background indexing
-                _ = Task.Run(async () =>
-                {
-                    try
+                    await StopBackendAsync().ConfigureAwait(false);
+                    ct.ThrowIfCancellationRequested();
+                    UnrealProjectDetector.CreateInstance();
+                    var detector = UnrealProjectDetector.Instance;
+                    await detector.DetectAsync(this, engineOverride).ConfigureAwait(false);
+                    ct.ThrowIfCancellationRequested();
+                    if (!detector.IsUnrealProject)
                     {
-                        SetStatusBar("PenguinExtension: Background indexing...");
-
-                        var indexProgress = new Progress<IndexProgress>(p =>
+                        BackendService.Report("Not an Unreal project. Backend inactive.");
+                        return;
+                    }
+                    config.ProjectRoot = detector.ProjectRoot;
+                    config.EngineRoot = indexEngine ? detector.EngineSourceRoot : null;
+                    if (mode == PenguinBackend.Core)
+                    {
+                        var core = new CoreClientService();
+                        _core = core;
+                        core.Message += WriteToOutputWindow;
+                        core.Failed += () =>
                         {
-                            if (p.IsComplete)
+                            if (BackendService.Core != core) return;
+                            BackendService.Report("Core failed. Use Restart Backend; no Legacy fallback.");
+                            _ = JoinableTaskFactory.RunAsync(async () =>
                             {
-                                SetStatusBar($"PenguinExtension: Indexing complete — {p.SymbolsFound:N0} symbols");
-                                WriteToOutputWindow($"Indexing complete: {p.ProcessedFiles} files processed, {p.SkippedFiles} unchanged, {p.SymbolsFound:N0} total symbols");
-                            }
-                            else
-                            {
-                                var pct = p.TotalFiles > 0 ? (p.ProcessedFiles + p.SkippedFiles) * 100 / p.TotalFiles : 0;
-                                SetStatusBar($"PenguinExtension: Indexing {pct}% — {p.CurrentFile}");
-                            }
-                        });
-
-                        await _indexer.IndexAsync(
-                            detector.ProjectSourceRoot,
-                            detector.EngineSourceRoot,
-                            indexEngine,
-                            indexProgress,
-                            _indexCts.Token).ConfigureAwait(false);
+                                await JoinableTaskFactory.SwitchToMainThreadAsync();
+                                _diagnostics?.Clear();
+                            });
+                        };
+                        core.Diagnostics += data => _diagnostics?.Publish(core, data);
+                        await core.StartAsync(config, ct).ConfigureAwait(false);
+                        await JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+                        ct.ThrowIfCancellationRequested();
+                        BackendService.Activate(core, config.EngineRoot);
+                        DocumentSync.Replay();
+                        await TaskScheduler.Default;
+                        ct.ThrowIfCancellationRequested();
+                        _coreWatcher = new CoreFileWatcher(core, detector.ProjectSourceRoot);
+                        return; // No legacy DB/cache/indexer/watchers in Core mode.
                     }
-                    catch (OperationCanceledException) { }
-                    catch (Exception ex)
+                    _db = new SQLiteCache(detector.SolutionDirectory);
+                    CacheService.Initialize(_db);
+                    var cache = CacheService.Instance;
+                    await new StartupCacheLoader(_db, cache).LoadAsync().ConfigureAwait(false);
+                    await JoinableTaskFactory.SwitchToMainThreadAsync(ct);
+                    ct.ThrowIfCancellationRequested();
+                    BackendService.Activate(cache);
+                    await TaskScheduler.Default;
+                    ct.ThrowIfCancellationRequested();
+                    _indexCts = CancellationTokenSource.CreateLinkedTokenSource(requested.Token, token);
+                    _indexer = new UnrealIndexer(_db, cache, maxThreads);
+                    var indexer = _indexer;
+                    var indexToken = _indexCts.Token;
+                    _indexTask = Task.Run(async () =>
                     {
-                        WriteToOutputWindow($"Indexing error: {ex.Message}");
-                        SetStatusBar("PenguinExtension: Indexing failed. See Output window.");
-                    }
-                }, _indexCts.Token);
-
-                // Step 4: Start file watcher for incremental indexing
-                _incrementalIndexer = new IncrementalIndexer(_indexer, CacheService.Instance);
-                _incrementalIndexer.Start(detector.ProjectSourceRoot);
-
-                WriteToOutputWindow("Incremental file watcher started.");
-            }
-            catch (Exception ex)
-            {
-                WriteToOutputWindow($"PenguinExtension initialization error: {ex}");
-                SetStatusBar("PenguinExtension: Initialization failed.");
+                        try
+                        {
+                            await indexer.IndexAsync(detector.ProjectSourceRoot, detector.EngineSourceRoot,
+                                indexEngine, null, indexToken).ConfigureAwait(false);
+                            if (!indexToken.IsCancellationRequested) BackendService.Report("Legacy indexing complete");
+                        }
+                        catch (OperationCanceledException) { }
+                        catch (Exception ex) { WriteToOutputWindow(ex.Message); }
+                    });
+                    _incrementalIndexer = new IncrementalIndexer(indexer, cache);
+                    _incrementalIndexer.Start(detector.ProjectSourceRoot);
+                }
+                catch (OperationCanceledException) { await StopBackendAsync().ConfigureAwait(false); }
+                catch (Exception ex)
+                {
+                    await StopBackendAsync().ConfigureAwait(false);
+                    WriteToOutputWindow(ex.ToString());
+                    BackendService.Report(mode + " failed: " + ex.Message + " No automatic fallback. Use Restart Backend.");
+                }
+                finally { _lifecycle.Release(); }
             }
         }
 
-        // ── Command registration ────────────────────────────────────
+        private async Task StopBackendAsync()
+        {
+            _coreWatcher?.Dispose(); _coreWatcher = null;
+            if (_core != null) { await _core.StopAsync().ConfigureAwait(false); _core = null; }
+            _indexCts?.Cancel();
+            if (_incrementalIndexer != null)
+            {
+                await _incrementalIndexer.StopAsync().ConfigureAwait(false);
+                _incrementalIndexer = null;
+            }
+            if (_indexTask != null) { try { await _indexTask.ConfigureAwait(false); } catch { } _indexTask = null; }
+            _indexCts?.Dispose(); _indexCts = null;
+            _db?.Dispose(); _db = null;
+        }
 
         private async Task RegisterCommandsAsync()
         {
@@ -159,23 +208,41 @@ namespace PenguinExtention
 
             var commandService = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             if (commandService == null) return;
+            CoreCommands.Register(this, commandService);
 
             // Go To Unreal Definition
             await GoToUnrealDefinitionCommand.InitializeAsync(this).ConfigureAwait(true);
 
-            // Open Unreal Explorer
-            var explorerCmdId = new CommandID(
-                PenguinExtensionCommandIds.CommandSetGuid,
-                PenguinExtensionCommandIds.OpenUnrealExplorerId);
+            // Generate Implementation
+            await GenerateImplementationCommand.InitializeAsync(this).ConfigureAwait(true);
 
-            commandService.AddCommand(new MenuCommand(async (s, e) =>
+            // Generate Getter/Setter
+            await GenerateGetterSetterCommand.InitializeAsync(this).ConfigureAwait(true);
+
+            // Open Unreal Explorer
+            RegisterToolWindowCommand(commandService,
+                PenguinExtensionCommandIds.OpenUnrealExplorerId, typeof(UnrealExplorerWindow));
+
+            // Open Symbol Inspector
+            RegisterToolWindowCommand(commandService,
+                PenguinExtensionCommandIds.OpenSymbolInspectorId, typeof(SymbolInspectorWindow));
+
+            // Open Shortcuts Reference
+            RegisterToolWindowCommand(commandService,
+                PenguinExtensionCommandIds.OpenShortcutsReferenceId, typeof(ShortcutsReferenceWindow));
+        }
+
+        // ponytail: one helper instead of repeating tool window opening boilerplate
+        private void RegisterToolWindowCommand(OleMenuCommandService svc, int cmdId, Type windowType)
+        {
+            var id = new CommandID(PenguinExtensionCommandIds.CommandSetGuid, cmdId);
+            svc.AddCommand(new MenuCommand(async (s, e) =>
             {
                 await JoinableTaskFactory.SwitchToMainThreadAsync();
-                var window = await ShowToolWindowAsync(
-                    typeof(UnrealExplorerWindow), 0, true, DisposalToken);
+                var window = await ShowToolWindowAsync(windowType, 0, true, DisposalToken);
                 if (window?.Frame is IVsWindowFrame frame)
                     frame.Show();
-            }, explorerCmdId));
+            }, id));
         }
 
         // ── Helpers ─────────────────────────────────────────────────
@@ -219,10 +286,23 @@ namespace PenguinExtention
         {
             if (disposing)
             {
-                _indexCts?.Cancel();
-                _indexCts?.Dispose();
-                _incrementalIndexer?.Dispose();
-                _db?.Dispose();
+                PenguinOptionsPage.SettingsApplied -= OnSettingsApplied;
+                BackendService.Changed -= OnBackendChanged;
+                var solutionEvents = _solutionEvents; _solutionEvents = null;
+                var diagnostics = _diagnostics; _diagnostics = null;
+                _ = JoinableTaskFactory.RunAsync(async () =>
+                {
+                    await JoinableTaskFactory.SwitchToMainThreadAsync();
+                    solutionEvents?.Dispose();
+                    diagnostics?.Dispose();
+                });
+                _workspaceCts?.Cancel();
+                _ = Task.Run(async () =>
+                {
+                    await _lifecycle.WaitAsync().ConfigureAwait(false);
+                    try { await StopBackendAsync().ConfigureAwait(false); }
+                    finally { _lifecycle.Release(); }
+                });
             }
             base.Dispose(disposing);
         }

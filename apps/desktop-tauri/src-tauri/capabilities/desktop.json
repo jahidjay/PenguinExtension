@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "Only the main local window can invoke bounded Penguin commands. Native directory selection runs in Rust; no generic filesystem, dialog, shell or network frontend API is granted.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "allow-desktop-open",
+    "allow-desktop-close",
+    "allow-desktop-status",
+    "allow-desktop-search",
+    "allow-desktop-symbol",
+    "allow-desktop-inheritance",
+    "allow-desktop-reindex",
+    "allow-desktop-job",
+    "allow-desktop-cancel",
+    "allow-desktop-style",
+    "allow-desktop-ai",
+    "allow-desktop-settings",
+    "allow-desktop-save-settings"
+  ]
+}

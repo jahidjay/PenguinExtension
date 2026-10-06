@@ -95,10 +95,23 @@
     <Compile Include="Services\PenguinOptionsPage.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="apps/vs-client/BackendService.cs" />
+    <Compile Include="apps/vs-client/CoreClientService.cs" />
+    <Compile Include="apps/vs-client/CoreCommands.cs" />
+    <Compile Include="apps/vs-client/CoreDiagnostics.cs" />
+    <Compile Include="apps/vs-client/CoreFileWatcher.cs" />
+    <Compile Include="apps/vs-client/DocumentSync.cs" />
+    <Compile Include="apps/vs-client/EditorAccess.cs" />
+    <Compile Include="apps/vs-client/Protocol.cs" />
+    <Compile Include="apps/vs-client/SolutionEvents.cs" />
+  </ItemGroup>
+
   <!-- Compile items: Completion -->
   <ItemGroup>
     <Compile Include="Completion\UnrealCompletionSourceProvider.cs" />
     <Compile Include="Completion\UnrealCompletionSource.cs" />
+    <Compile Include="Completion\UnrealMacroSpecifiers.cs" />
   </ItemGroup>
 
   <!-- Compile items: QuickInfo -->
@@ -110,6 +123,8 @@
   <!-- Compile items: Commands -->
   <ItemGroup>
     <Compile Include="Commands\GoToUnrealDefinitionCommand.cs" />
+    <Compile Include="Commands\GenerateImplementationCommand.cs" />
+    <Compile Include="Commands\GenerateGetterSetterCommand.cs" />
     <Compile Include="Commands\PenguinExtensionCommandIds.cs" />
   </ItemGroup>
 
@@ -120,11 +135,27 @@
       <DependentUpon>UnrealExplorerControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="UI\UnrealExplorerViewModel.cs" />
+    <Compile Include="UI\SymbolInspectorWindow.cs" />
+    <Compile Include="UI\SymbolInspectorControl.xaml.cs">
+      <DependentUpon>SymbolInspectorControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="UI\ShortcutsReferenceWindow.cs" />
+    <Compile Include="UI\ShortcutsReferenceControl.xaml.cs">
+      <DependentUpon>ShortcutsReferenceControl.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 
   <!-- WPF XAML pages -->
   <ItemGroup>
     <Page Include="UI\UnrealExplorerControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UI\SymbolInspectorControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="UI\ShortcutsReferenceControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -149,7 +180,16 @@
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.0.32112.339" ExcludeAssets="runtime" NoWarn="NU1604" />
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.9.3168" NoWarn="NU1604" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
+    <PackageReference Include="StreamJsonRpc" Version="2.8.28" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup Condition="Exists('target/release/penguin-lsp.exe')">
+    <Content Include="target/release/penguin-lsp.exe">
+      <Link>Core/penguin-lsp.exe</Link>
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- Include native SQLite interop assemblies in the VSIX package -->

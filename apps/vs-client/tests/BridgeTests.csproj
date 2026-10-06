@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework><OutputType>Exe</OutputType><LangVersion>latest</LangVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects><GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="StreamJsonRpc" Version="2.8.28" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Compile Include="../CoreClientService.cs" Link="CoreClientService.cs" />
+    <Compile Include="../Protocol.cs" Link="Protocol.cs" />
+    <Compile Include="../../../Models/UnrealSymbol.cs" Link="UnrealSymbol.cs" />
+    <Compile Include="../../../Models/UnrealSymbolKind.cs" Link="UnrealSymbolKind.cs" />
+  </ItemGroup>
+</Project>
