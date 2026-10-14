@@ -122,6 +122,8 @@ namespace PenguinExtention.Commands
             else
                 Line(null, "No completion call yet — type a few letters in a C++ file, then rerun");
 
+            Line(null, PremiumHooks.IsInstalled ? "Penguin Premium: installed" : "Penguin Premium: not installed (free edition)");
+
             // ── Key bindings ──
             foreach (var line in KeyBindings()) report.AppendLine(line);
 
@@ -164,11 +166,9 @@ namespace PenguinExtention.Commands
                 var wanted = new Dictionary<int, string>
                 {
                     { PenguinExtensionCommandIds.GoToUnrealDefinitionId, "Go To Definition" },
-                    { PenguinExtensionCommandIds.GoToImplementationId, "Go To Implementation" },
-                    { PenguinExtensionCommandIds.ToggleHeaderSourceId, "Toggle Header/Source" },
+                    { PenguinExtensionCommandIds.OpenUnrealExplorerId, "Unreal Explorer" },
                     { PenguinExtensionCommandIds.GenerateImplementationId, "Generate Implementation" },
-                    { PenguinExtensionCommandIds.FindSymbolId, "Find Symbol" },
-                    { PenguinExtensionCommandIds.FindReferencesId, "Find References" },
+                    { PenguinExtensionCommandIds.OpenColorThemeId, "Penguin Color Theme" },
                 };
                 foreach (EnvDTE.Command command in dte.Commands)
                 {

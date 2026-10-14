@@ -75,6 +75,21 @@ All use the first chord **Ctrl+Shift+U**, then:
 | S | Symbol Inspector |
 | K | Keyboard Shortcuts |
 
+## Editions
+
+| | Free (this repo) | Penguin Premium (separate add-on) |
+| --- | --- | --- |
+| Unreal symbol index, autocomplete, specifier completion | ✅ | ✅ |
+| Hover docs, signature help, Go To Unreal Definition | ✅ | ✅ |
+| Unreal Explorer, Symbol Inspector | ✅ | ✅ |
+| Generate Implementation / Getter-Setter | ✅ | ✅ |
+| Penguin Color Theme | ✅ | ✅ |
+| Definition Preview window | | ✅ |
+| Find References, Find Symbol, Open File, Toggle Header/Source, Go To Implementation/Related, List Methods | | ✅ |
+| Rename (+CoreRedirects), Add Include, Create Declaration, Move Implementation, Encapsulate Field, Document Method, snippets, Implement Virtuals, Add Missing Cases, Introduce Variable, Forward Declaration | | ✅ |
+
+Penguin Premium is a separate Visual Studio extension that requires this one; its source is not in this repository.
+
 ## Penguin Color Theme
 
 **Alt+U, Shift+T** opens the Penguin Color Theme window. It sets the colors of all C++ code in Visual Studio:

@@ -116,6 +116,7 @@
     <Compile Include="Services\HeaderSourceResolver.cs" />
     <Compile Include="Services\SolutionFileIndex.cs" />
     <Compile Include="Services\PenguinOptionsPage.cs" />
+    <Compile Include="Services\PremiumHooks.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -152,10 +153,6 @@
     <Compile Include="Commands\GenerateGetterSetterCommand.cs" />
     <Compile Include="Commands\PenguinExtensionCommandIds.cs" />
     <Compile Include="Commands\PenguinEditor.cs" />
-    <Compile Include="Commands\NavigationCommands.cs" />
-    <Compile Include="Commands\RefactorCommands.cs" />
-    <Compile Include="Commands\VisualAssistCommands.cs" />
-    <Compile Include="Commands\CodeGenCommands.cs" />
     <Compile Include="Commands\SelfTestCommand.cs" />
   </ItemGroup>
 
@@ -175,10 +172,6 @@
       <DependentUpon>SymbolInspectorControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="UI\ShortcutsReferenceWindow.cs" />
-    <Compile Include="UI\QuickPickDialog.cs" />
-    <Compile Include="UI\FindReferencesWindow.cs" />
-    <Compile Include="UI\RenameDialog.cs" />
-    <Compile Include="UI\DefinitionPreviewWindow.cs" />
     <Compile Include="UI\ShortcutsReferenceControl.xaml.cs">
       <DependentUpon>ShortcutsReferenceControl.xaml</DependentUpon>
     </Compile>

@@ -38,13 +38,6 @@ namespace PenguinExtention
                        Orientation = ToolWindowOrientation.Right)]
     [ProvideToolWindow(typeof(ShortcutsReferenceWindow),
                        Style = VsDockStyle.Float)]
-    [ProvideToolWindow(typeof(FindReferencesWindow),
-                       Style = VsDockStyle.Tabbed,
-                       Window = "34E76E81-EE4A-11D0-AE2E-00A0C90FFFC3")] // docks with the Output window
-    [ProvideToolWindow(typeof(DefinitionPreviewWindow),
-                       Style = VsDockStyle.Linked,
-                       Window = ToolWindowGuids.SolutionExplorer,
-                       Orientation = ToolWindowOrientation.Bottom)]
     [ProvideToolWindow(typeof(ColorThemeWindow),
                        Style = VsDockStyle.Linked,
                        Window = ToolWindowGuids.SolutionExplorer,
@@ -59,7 +52,7 @@ namespace PenguinExtention
         public const string PackageGuidString = "7D9B3C2E-8A4F-4B1D-9E5C-6F0A2D3B8C7E";
 
         /// <summary>Keep in step with Identity/@Version in source.extension.vsixmanifest.</summary>
-        internal const string Version = "1.10";
+        internal const string Version = "1.11";
 
         private SQLiteCache _db;
         private UnrealIndexer _indexer;
@@ -267,7 +260,8 @@ namespace PenguinExtention
             var commandService = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             if (commandService == null) return;
             CoreCommands.Register(this, commandService);
-            VisualAssistCommands.Register(this, commandService);
+            commandService.AddCommand(new MenuCommand((s, e) => PenguinEditor.Run(SelfTestCommand.RunAsync),
+                new CommandID(PenguinExtensionCommandIds.CommandSetGuid, PenguinExtensionCommandIds.SelfTestId)));
 
             // Go To Unreal Definition
             await GoToUnrealDefinitionCommand.InitializeAsync(this).ConfigureAwait(true);

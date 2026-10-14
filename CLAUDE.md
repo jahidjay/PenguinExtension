@@ -23,9 +23,6 @@ Commands/
   GenerateImplementationCommand.cs — Generate .cpp skeleton from .h declaration
   GenerateGetterSetterCommand.cs   — Generate Get/Set from UPROPERTY
   PenguinExtensionCommandIds.cs    — GUID + IDs (sync with .vsct)
-  VisualAssistCommands.cs          — Registers VA-style commands (0x08xx/0x09xx)
-  NavigationCommands.cs            — Find Symbol, Open File, Toggle H/S, GoTo Related/Implementation, List Methods
-  RefactorCommands.cs              — Find References, Rename (+CoreRedirects), Add Include, Create Declaration, etc.
   PenguinEditor.cs                 — Shared editor helpers; multi-file edits in one linked undo
 Editor/                      — Classifier (UE coloring), reference-highlight tagger, signature help
   UnrealClassifier.cs              — Unreal syntax coloring: types/structs/enums/delegates/functions/properties + specifiers/meta keys
@@ -47,6 +44,7 @@ Services/
   HeaderSourceResolver.cs    — .h ↔ .cpp incl. Public/Private; module-relative include paths
   SolutionFileIndex.cs       — Background project file list for Open File
   PenguinOptionsPage.cs      — Tools → Options page
+  PremiumHooks.cs            — Delegates the Premium add-on fills in (Explorer "Go to Implementation"/"Find References")
   ThemeModel.cs / ThemeService.cs — Penguin Color Theme: entries + defaults, theme.json, runtime apply (SYNTAX_COLOR_PLAN.md)
 UI/
   UnrealExplorerWindow.cs          — Symbol Explorer tool window
@@ -55,8 +53,6 @@ UI/
   ShortcutsReferenceWindow.cs      — Keyboard shortcuts reference
   ShortcutsReferenceControl.xaml/.cs — WPF control for shortcuts
   ColorThemeWindow.cs              — Penguin Color Theme window (code-built WPF)
-  QuickPickDialog.cs / RenameDialog.cs — code-built WPF dialogs
-  FindReferencesWindow.cs / DefinitionPreviewWindow.cs — tool windows
 ```
 
 ## Keyboard Shortcuts (all two-chord: Alt+U, then… — Ctrl+Shift+U also works, but NOT inside the text editor)
@@ -93,14 +89,23 @@ plain C++ members of reflected classes. Bump `ExtractorVersion` in UnrealIndexer
 | S   | Symbol Inspector |
 | K   | Keyboard Shortcuts |
 | Shift+T | Penguin Color Theme window |
-| Y / O / H / J / R / M | Find Symbol / Open File / Toggle Header-Source / Go To Implementation / Go To Related / List Methods |
-| F / W | Find References / Definition Preview window |
-| N / A / C / V / P / Q | Rename / Add Include / Create Declaration / Move Implementation / Encapsulate Field / Document Method |
-| T / B / L / X / Z | Snippets & Surround With / Implement Virtual Methods / Add Missing Cases / Introduce Variable / Forward Declaration |
+| Y / O / H / J / R / M | Find Symbol / Open File / Toggle Header-Source / Go To Implementation / Go To Related / List Methods — **Premium** |
+| F / W | Find References / Definition Preview window — **Premium** |
+| N / A / C / V / P / Q | Rename / Add Include / Create Declaration / Move Implementation / Encapsulate Field / Document Method — **Premium** |
+| T / B / L / X / Z | Snippets & Surround With / Implement Virtual Methods / Add Missing Cases / Introduce Variable / Forward Declaration — **Premium** |
 
 **Two project modes:** Unreal (`.uproject` found) and plain C/C++ (any solution with `.vcxproj`/`.cpp`, e.g. SDL2 games). Plain mode indexes the solution with `Services/CppSymbolExtractor.cs` (general C/C++ declarations) plus library include folders from each `.vcxproj`'s AdditionalIncludeDirectories and the "Extra Include Directories" option. Core (Rust) backend is Unreal-only.
 
-Signature help (declaration + docs) appears when typing `(` after an indexed Unreal function. Command IDs: 0x08xx navigation, 0x09xx refactoring (`Commands/VisualAssistCommands.cs`).
+Signature help (declaration + docs) appears when typing `(` after an indexed Unreal function.
+
+## Free vs Premium
+
+This repo is the **free** edition (public). **Penguin Premium** is a separate VSIX in a separate private repo
+(`../PenguinPremium`, `jahidjay/PenguinPremium`) that depends on this extension and references this assembly via
+`[InternalsVisibleTo("PenguinPremium")]`. Premium owns: Definition Preview window, Find References window, and every
+Visual Assist-style navigation/refactoring command (IDs 0x08xx/0x09xx under its own command set GUID, parented to
+this extension's Tools → Penguin menu groups). Never add premium code here; free features that offer a premium
+action go through `Services/PremiumHooks.cs`. Internal APIs Premium uses are a contract — keep them stable.
 
 ## Hard Rules
 

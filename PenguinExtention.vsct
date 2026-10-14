@@ -123,89 +123,7 @@
         <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
         <Strings><ButtonText>Cancel Core Action</ButtonText></Strings>
       </Button>
-      <!-- Visual Assist–style navigation -->
-      <Button guid="guidPenguinExtensionCmdSet" id="FindSymbolId" priority="0x0110" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinNavGroup"/>
-        <Icon guid="guidPenguinImages" id="bmpPenguin"/>
-        <Strings><ButtonText>Find Symbol...</ButtonText><ToolTipText>Search indexed Unreal symbols (Alt+U, Y)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="OpenFileInSolutionId" priority="0x0111" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinNavGroup"/>
-        <Strings><ButtonText>Open File in Project...</ButtonText><ToolTipText>Fuzzy-open any project source/config file (Alt+U, O)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="ToggleHeaderSourceId" priority="0x0112" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinNavGroup"/>
-        <Strings><ButtonText>Toggle Header/Source</ButtonText><ToolTipText>Switch between .h and .cpp, including Public/Private layouts (Alt+U, H)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="GoToImplementationId" priority="0x0113" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinNavGroup"/>
-        <Strings><ButtonText>Go To Implementation</ButtonText><ToolTipText>Jump to the Owner::Function body in the .cpp (Alt+U, J)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="GoToRelatedId" priority="0x0114" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinNavGroup"/>
-        <Strings><ButtonText>Go To Related...</ButtonText><ToolTipText>Bases, derived classes, owner, implementation and corresponding file (Alt+U, R)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="ListMethodsId" priority="0x0115" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinNavGroup"/>
-        <Strings><ButtonText>List Methods in File...</ButtonText><ToolTipText>Pick a function in the current file (Alt+U, M)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="FindReferencesId" priority="0x0116" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinNavGroup"/>
-        <Icon guid="guidPenguinImages" id="bmpPenguin"/>
-        <Strings><ButtonText>Find References</ButtonText><ToolTipText>Find references to the symbol under the cursor (Alt+U, F)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="OpenDefinitionPreviewId" priority="0x0117" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
-        <Icon guid="guidPenguinImages" id="bmpPenguin"/>
-        <Strings><ButtonText>Definition Preview</ButtonText><ToolTipText>Live preview of the declaration/implementation under the cursor (Alt+U, W)</ToolTipText></Strings>
-      </Button>
 
-      <!-- Visual Assist–style refactorings -->
-      <Button guid="guidPenguinExtensionCmdSet" id="RenameSymbolId" priority="0x0210" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Rename...</ButtonText><ToolTipText>Rename with preview and optional Unreal CoreRedirect (Alt+U, N)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="AddIncludeId" priority="0x0211" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Add Include</ButtonText><ToolTipText>Add #include for the symbol under the cursor (Alt+U, A)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="CreateDeclarationId" priority="0x0212" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Create Declaration</ButtonText><ToolTipText>Declare the .cpp definition on this line in its class header (Alt+U, C)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="MoveImplementationId" priority="0x0213" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Move Implementation to Source</ButtonText><ToolTipText>Move an inline header body into the .cpp (Alt+U, V)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="EncapsulateFieldId" priority="0x0214" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Encapsulate Field</ButtonText><ToolTipText>Make the field private and add Get/Set accessors (Alt+U, P)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="DocumentMethodId" priority="0x0215" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Document Method</ButtonText><ToolTipText>Insert a /** @param @return */ comment (Alt+U, Q)</ToolTipText></Strings>
-      </Button>
-      <!-- Code generation -->
-      <Button guid="guidPenguinExtensionCmdSet" id="InsertSnippetId" priority="0x0216" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Insert Snippet / Surround With...</ButtonText><ToolTipText>C++ and SDL2 snippets; with a selection, wraps it (Alt+U, T)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="ImplementVirtualMethodsId" priority="0x0217" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Implement Virtual Methods...</ButtonText><ToolTipText>Declare overrides of base-class virtuals (Alt+U, B)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="AddMissingCasesId" priority="0x0218" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Add Missing Case Statements</ButtonText><ToolTipText>Add a case for every unhandled enum value (Alt+U, L)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="IntroduceVariableId" priority="0x0219" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Introduce Variable...</ButtonText><ToolTipText>Replace the selected expression with a named local (Alt+U, X)</ToolTipText></Strings>
-      </Button>
-      <Button guid="guidPenguinExtensionCmdSet" id="AddForwardDeclarationId" priority="0x021A" type="Button">
-        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinRefactorGroup"/>
-        <Strings><ButtonText>Add Forward Declaration</ButtonText><ToolTipText>Add 'class X;' for the type under the cursor (Alt+U, Z)</ToolTipText></Strings>
-      </Button>
       <Button guid="guidPenguinExtensionCmdSet" id="SelfTestId" priority="0x0090" type="Button">
         <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
         <Icon guid="guidPenguinImages" id="bmpPenguin"/>
@@ -263,25 +181,6 @@
                 key1="U" mod1="Control Shift"
                 key2="K"/>
     <!-- Visual Assist–style commands: Ctrl+Shift+U, then … -->
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="FindSymbolId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="Y"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenFileInSolutionId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="O"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="ToggleHeaderSourceId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="H"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToImplementationId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="J"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToRelatedId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="R"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="ListMethodsId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="M"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="FindReferencesId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="F"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenDefinitionPreviewId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="W"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="RenameSymbolId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="N"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="AddIncludeId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="A"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="CreateDeclarationId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="C"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="MoveImplementationId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="V"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="EncapsulateFieldId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="P"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="DocumentMethodId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="Q"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="InsertSnippetId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="T"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="ImplementVirtualMethodsId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="B"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="AddMissingCasesId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="L"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="IntroduceVariableId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="X"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="AddForwardDeclarationId" editor="guidVSStd97" key1="U" mod1="Control Shift" key2="Z"/>
     <!-- Alt+U chords: same letters as Ctrl+Shift+U. Ctrl+Shift+U is Edit.MakeUppercase inside the text editor, so these are the reliable ones. -->
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToUnrealDefinitionId" editor="guidVSStd97" key1="U" mod1="Alt" key2="D"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenUnrealExplorerId" editor="guidVSStd97" key1="U" mod1="Alt" key2="E"/>
@@ -289,36 +188,9 @@
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="GenerateGetterSetterId" editor="guidVSStd97" key1="U" mod1="Alt" key2="G"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenSymbolInspectorId" editor="guidVSStd97" key1="U" mod1="Alt" key2="S"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenShortcutsReferenceId" editor="guidVSStd97" key1="U" mod1="Alt" key2="K"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="FindSymbolId" editor="guidVSStd97" key1="U" mod1="Alt" key2="Y"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenFileInSolutionId" editor="guidVSStd97" key1="U" mod1="Alt" key2="O"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="ToggleHeaderSourceId" editor="guidVSStd97" key1="U" mod1="Alt" key2="H"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToImplementationId" editor="guidVSStd97" key1="U" mod1="Alt" key2="J"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToRelatedId" editor="guidVSStd97" key1="U" mod1="Alt" key2="R"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="ListMethodsId" editor="guidVSStd97" key1="U" mod1="Alt" key2="M"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="FindReferencesId" editor="guidVSStd97" key1="U" mod1="Alt" key2="F"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenDefinitionPreviewId" editor="guidVSStd97" key1="U" mod1="Alt" key2="W"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="RenameSymbolId" editor="guidVSStd97" key1="U" mod1="Alt" key2="N"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="AddIncludeId" editor="guidVSStd97" key1="U" mod1="Alt" key2="A"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="CreateDeclarationId" editor="guidVSStd97" key1="U" mod1="Alt" key2="C"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="MoveImplementationId" editor="guidVSStd97" key1="U" mod1="Alt" key2="V"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="EncapsulateFieldId" editor="guidVSStd97" key1="U" mod1="Alt" key2="P"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="DocumentMethodId" editor="guidVSStd97" key1="U" mod1="Alt" key2="Q"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="InsertSnippetId" editor="guidVSStd97" key1="U" mod1="Alt" key2="T"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="ImplementVirtualMethodsId" editor="guidVSStd97" key1="U" mod1="Alt" key2="B"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="AddMissingCasesId" editor="guidVSStd97" key1="U" mod1="Alt" key2="L"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="IntroduceVariableId" editor="guidVSStd97" key1="U" mod1="Alt" key2="X"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="AddForwardDeclarationId" editor="guidVSStd97" key1="U" mod1="Alt" key2="Z"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="SelfTestId" editor="guidVSStd97" key1="U" mod1="Alt" key2="U"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenColorThemeId" editor="guidVSStd97" key1="U" mod1="Alt" key2="T" mod2="Shift"/>
     <!-- Visual Assist default keys, scoped to the text editor (where VA binds them). -->
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="ToggleHeaderSourceId" editor="guidTextEditorScope" key1="O" mod1="Alt"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToImplementationId" editor="guidTextEditorScope" key1="G" mod1="Alt"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="ListMethodsId" editor="guidTextEditorScope" key1="M" mod1="Alt"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="FindSymbolId" editor="guidTextEditorScope" key1="S" mod1="Alt Shift"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenFileInSolutionId" editor="guidTextEditorScope" key1="O" mod1="Alt Shift"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToRelatedId" editor="guidTextEditorScope" key1="G" mod1="Alt Shift"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="FindReferencesId" editor="guidTextEditorScope" key1="F" mod1="Alt Shift"/>
-    <KeyBinding guid="guidPenguinExtensionCmdSet" id="RenameSymbolId" editor="guidTextEditorScope" key1="R" mod1="Alt Shift"/>
   </KeyBindings>
 
   <!-- GUID and ID symbol definitions — must match PenguinExtensionCommandIds.cs -->
@@ -349,25 +221,6 @@
       <IDSymbol name="AIExplainId" value="0x0710"/>
       <IDSymbol name="AIGenerateId" value="0x0711"/>
       <IDSymbol name="CancelCoreJobId" value="0x0712"/>
-      <IDSymbol name="FindSymbolId" value="0x0800"/>
-      <IDSymbol name="OpenFileInSolutionId" value="0x0801"/>
-      <IDSymbol name="ToggleHeaderSourceId" value="0x0802"/>
-      <IDSymbol name="GoToRelatedId" value="0x0803"/>
-      <IDSymbol name="ListMethodsId" value="0x0804"/>
-      <IDSymbol name="GoToImplementationId" value="0x0805"/>
-      <IDSymbol name="FindReferencesId" value="0x0806"/>
-      <IDSymbol name="OpenDefinitionPreviewId" value="0x0807"/>
-      <IDSymbol name="RenameSymbolId" value="0x0900"/>
-      <IDSymbol name="AddIncludeId" value="0x0901"/>
-      <IDSymbol name="CreateDeclarationId" value="0x0902"/>
-      <IDSymbol name="MoveImplementationId" value="0x0903"/>
-      <IDSymbol name="EncapsulateFieldId" value="0x0904"/>
-      <IDSymbol name="DocumentMethodId" value="0x0905"/>
-      <IDSymbol name="InsertSnippetId" value="0x0906"/>
-      <IDSymbol name="ImplementVirtualMethodsId" value="0x0907"/>
-      <IDSymbol name="AddMissingCasesId" value="0x0908"/>
-      <IDSymbol name="IntroduceVariableId" value="0x0909"/>
-      <IDSymbol name="AddForwardDeclarationId" value="0x090A"/>
       <IDSymbol name="SelfTestId" value="0x0A00"/>
       <IDSymbol name="OpenColorThemeId" value="0x0A01"/>
     </GuidSymbol>

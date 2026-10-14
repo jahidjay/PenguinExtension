@@ -436,18 +436,14 @@ namespace PenguinExtention.UI
                 menu.Items.Add(mi);
             }
             Add("Go to Definition", s => { ThreadHelper.ThrowIfNotOnUIThread(); PenguinEditor.Navigate(s); });
-            Add("Go to Implementation", s => PenguinEditor.Run(async () =>
+            void AddPremium(string text, Func<Func<UnrealSymbol, Task>> hook) => Add(text, s =>
             {
-                var impl = await Commands.NavigationCommands.FindImplementationAsync(s, CancellationToken.None);
-                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                if (impl != null) PenguinEditor.Open(impl.Item1, impl.Item2, impl.Item3);
-                else { PenguinEditor.Status("No implementation found; opening the declaration."); PenguinEditor.Navigate(s); }
-            }));
-            Add("Find References", s => PenguinEditor.Run(async () =>
-            {
-                var refs = await BackendService.ReferencesAsync(s, CancellationToken.None);
-                await FindReferencesWindow.ShowAsync(s.DisplayText, refs);
-            }));
+                var action = hook();
+                if (action == null) { ThreadHelper.ThrowIfNotOnUIThread(); PenguinEditor.Status(PremiumHooks.Upsell); return; }
+                PenguinEditor.Run(() => action(s));
+            });
+            AddPremium("Go to Implementation", () => PremiumHooks.GoToImplementation);
+            AddPremium("Find References", () => PremiumHooks.FindReferences);
             menu.Items.Add(new Separator());
             Add("Copy Name", s => Clipboard.SetText(s.Name));
             Add("Copy Qualified Name", s => Clipboard.SetText(s.FullyQualifiedName ?? s.DisplayText));
