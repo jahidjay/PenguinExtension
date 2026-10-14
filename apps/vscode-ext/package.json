@@ -1,8 +1,8 @@
 {
   "name": "penguin-vscode",
-  "displayName": "Penguin Unreal Tools",
-  "description": "Unreal C++ navigation, indexing and opt-in local AI previews via Penguin LSP.",
-  "version": "0.1.0",
+  "displayName": "Penguin for Unreal Engine",
+  "description": "Free Unreal Engine C++ tools for VS Code and Google Antigravity: Unreal-aware completion, hover, Go To Definition, Penguin Dark/Light themes with Unreal coloring, Unreal Explorer, Symbol Inspector, signature help and Generate Implementation / Getter-Setter.",
+  "version": "0.2.0",
   "publisher": "JahidNeo",
   "license": "UNLICENSED",
   "engines": {
@@ -10,7 +10,8 @@
   },
   "categories": [
     "Programming Languages",
-    "Other"
+    "Other",
+    "Themes"
   ],
   "extensionKind": [
     "workspace"
@@ -19,7 +20,9 @@
   "activationEvents": [
     "onLanguage:cpp",
     "onLanguage:c",
-    "workspaceContains:**/*.uproject"
+    "workspaceContains:**/*.uproject",
+    "onView:penguin.explorer",
+    "onView:penguin.inspector"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -91,6 +94,35 @@
         "command": "penguin.showOutput",
         "title": "Show Output",
         "category": "Penguin"
+      },
+      {
+        "command": "penguin.explorer.refresh",
+        "title": "Refresh Unreal Explorer",
+        "category": "Penguin",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "penguin.explorer.filter",
+        "title": "Filter Unreal Explorer",
+        "category": "Penguin",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "penguin.explorer.open",
+        "title": "Go to Unreal Definition",
+        "category": "Penguin"
+      },
+      {
+        "command": "penguin.generateImplementation",
+        "title": "Generate Implementation (.cpp)",
+        "category": "Penguin",
+        "enablement": "editorLangId == cpp || editorLangId == c"
+      },
+      {
+        "command": "penguin.generateGetterSetter",
+        "title": "Generate Getter/Setter",
+        "category": "Penguin",
+        "enablement": "editorLangId == cpp || editorLangId == c"
       }
     ],
     "configuration": {
@@ -132,6 +164,11 @@
           "type": "string",
           "default": "qwen2.5-coder:3b",
           "description": "Configured local model name. Must already be installed when AI is enabled. Missing models fail rather than being downloaded or substituted."
+        },
+        "penguin.unrealColoring.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Color Unreal macros, reflection specifiers, meta keys and indexed Unreal types/functions/properties. Colors come from the theme (penguin.* colors) and can be changed in workbench.colorCustomizations."
         }
       }
     },
@@ -146,15 +183,200 @@
           "command": "penguin.generatePreview",
           "when": "isWorkspaceTrusted && (editorLangId == cpp || editorLangId == c)",
           "group": "penguin@2"
+        },
+        {
+          "command": "penguin.generateImplementation",
+          "when": "editorLangId == cpp || editorLangId == c",
+          "group": "penguin@3"
+        },
+        {
+          "command": "penguin.generateGetterSetter",
+          "when": "editorLangId == cpp || editorLangId == c",
+          "group": "penguin@4"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "penguin.explorer.filter",
+          "when": "view == penguin.explorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "penguin.explorer.refresh",
+          "when": "view == penguin.explorer",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "penguin.explorer.open",
+          "when": "false"
         }
       ]
-    }
+    },
+    "colors": [
+      {
+        "id": "penguin.ueMacro",
+        "description": "UE macros (UPROPERTY, UFUNCTION, UE_LOG …)",
+        "defaults": {
+          "dark": "#C586C0",
+          "light": "#AF00DB",
+          "highContrast": "#C586C0",
+          "highContrastLight": "#AF00DB"
+        }
+      },
+      {
+        "id": "penguin.specifier",
+        "description": "Reflection specifiers (EditAnywhere, BlueprintCallable …)",
+        "defaults": {
+          "dark": "#569CD6",
+          "light": "#0451A5",
+          "highContrast": "#569CD6",
+          "highContrastLight": "#0451A5"
+        }
+      },
+      {
+        "id": "penguin.metaKey",
+        "description": "Keys inside meta=( … )",
+        "defaults": {
+          "dark": "#D7BA7D",
+          "light": "#8B6914",
+          "highContrast": "#D7BA7D",
+          "highContrastLight": "#8B6914"
+        }
+      },
+      {
+        "id": "penguin.class",
+        "description": "Indexed Unreal classes",
+        "defaults": {
+          "dark": "#4EC9B0",
+          "light": "#267F99",
+          "highContrast": "#4EC9B0",
+          "highContrastLight": "#267F99"
+        }
+      },
+      {
+        "id": "penguin.struct",
+        "description": "Indexed Unreal structs",
+        "defaults": {
+          "dark": "#86C691",
+          "light": "#2E7D32",
+          "highContrast": "#86C691",
+          "highContrastLight": "#2E7D32"
+        }
+      },
+      {
+        "id": "penguin.enum",
+        "description": "Indexed Unreal enums",
+        "defaults": {
+          "dark": "#EE9D5B",
+          "light": "#B35A00",
+          "highContrast": "#EE9D5B",
+          "highContrastLight": "#B35A00"
+        }
+      },
+      {
+        "id": "penguin.enumValue",
+        "description": "Indexed Unreal enum values",
+        "defaults": {
+          "dark": "#B8D7A3",
+          "light": "#4F7A28",
+          "highContrast": "#B8D7A3",
+          "highContrastLight": "#4F7A28"
+        }
+      },
+      {
+        "id": "penguin.delegate",
+        "description": "Indexed Unreal delegates",
+        "defaults": {
+          "dark": "#D16D9E",
+          "light": "#A4286A",
+          "highContrast": "#D16D9E",
+          "highContrastLight": "#A4286A"
+        }
+      },
+      {
+        "id": "penguin.function",
+        "description": "Indexed Unreal functions",
+        "defaults": {
+          "dark": "#DCDCAA",
+          "light": "#795E26",
+          "highContrast": "#DCDCAA",
+          "highContrastLight": "#795E26"
+        }
+      },
+      {
+        "id": "penguin.property",
+        "description": "Indexed Unreal properties (after -> or .)",
+        "defaults": {
+          "dark": "#9CDCFE",
+          "light": "#001080",
+          "highContrast": "#9CDCFE",
+          "highContrastLight": "#001080"
+        }
+      }
+    ],
+    "themes": [
+      {
+        "label": "Penguin Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/penguin-dark-color-theme.json"
+      },
+      {
+        "label": "Penguin Light",
+        "uiTheme": "vs",
+        "path": "./themes/penguin-light-color-theme.json"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "penguin",
+          "title": "Penguin",
+          "icon": "media/penguin.svg"
+        }
+      ]
+    },
+    "views": {
+      "penguin": [
+        {
+          "id": "penguin.explorer",
+          "name": "Unreal Explorer"
+        },
+        {
+          "id": "penguin.inspector",
+          "name": "Symbol Inspector",
+          "type": "webview"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "penguin.generateImplementation",
+        "key": "alt+u i",
+        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c)"
+      },
+      {
+        "command": "penguin.generateGetterSetter",
+        "key": "alt+u g",
+        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c)"
+      },
+      {
+        "command": "editor.action.revealDefinition",
+        "key": "alt+u d",
+        "when": "editorTextFocus && (editorLangId == cpp || editorLangId == c)"
+      },
+      {
+        "command": "workbench.view.extension.penguin",
+        "key": "alt+u e"
+      }
+    ]
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test out/test/*.test.js",
-    "package": "npm run build && node scripts/check-binary.cjs && vsce package --allow-missing-repository --skip-license --out dist/penguin-vscode.vsix",
+    "package": "npm run build && node scripts/package.cjs",
     "package:check": "node scripts/check-binary.cjs"
   },
   "dependencies": {

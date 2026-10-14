@@ -685,3 +685,59 @@ fn second_identical_namespace_is_unavailable_without_starting_legacy_writer() {
     finish(&mut second);
     finish(&mut first);
 }
+
+#[test]
+fn names_merge_disk_and_live_buffers_with_revision_caching() {
+    use tower_lsp::lsp_types::Url;
+    let temp = tempfile::tempdir().unwrap();
+    let header = temp.path().join("Hero.h");
+    std::fs::write(
+        &header,
+        "UCLASS() class AHero { UPROPERTY() int32 Health; };",
+    )
+    .unwrap();
+    std::fs::write(
+        temp.path().join("Other.h"),
+        "UENUM() enum class EMode { A }; UCLASS() class AHero {};",
+    )
+    .unwrap();
+    let root = Url::from_directory_path(temp.path()).unwrap();
+    let mut session = Session::start();
+    session.request("initialize", json!({"capabilities":{},"rootUri":root}));
+    session.notify("initialized", json!({}));
+    let job = session.request("penguin/reindex", json!({}));
+    assert_eq!(terminal(&mut session, &job["id"])["state"], "succeeded");
+
+    let first = session.request("penguin/names", json!({}));
+    assert_eq!(
+        first["names"],
+        json!([
+            ["AHero", "class"],
+            ["EMode", "enum"],
+            ["Health", "property"]
+        ])
+    );
+    assert_eq!(first["truncated"], false);
+    let revision = first["revision"].as_str().unwrap().to_string();
+    let cached = session.request("penguin/names", json!({"sinceRevision": revision}));
+    assert!(cached["names"].is_null(), "{cached}");
+    assert_eq!(cached["revision"], first["revision"]);
+
+    // An open buffer replaces its file's disk declarations.
+    let uri = Url::from_file_path(&header).unwrap();
+    session.notify(
+        "textDocument/didOpen",
+        json!({"textDocument":{"uri":uri,"languageId":"cpp","version":1,
+            "text":"UCLASS() class AHero { UFUNCTION() void Jump(); };"}}),
+    );
+    let live = session.request("penguin/names", json!({"sinceRevision": revision}));
+    assert_ne!(live["revision"], first["revision"]);
+    assert_eq!(
+        live["names"],
+        json!([["AHero", "class"], ["EMode", "enum"], ["Jump", "function"]])
+    );
+    session.notify("textDocument/didClose", json!({"textDocument":{"uri":uri}}));
+    let closed = session.request("penguin/names", json!({"sinceRevision": revision}));
+    assert!(closed["names"].is_null(), "{closed}");
+    finish(&mut session);
+}

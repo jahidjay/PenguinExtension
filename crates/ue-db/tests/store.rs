@@ -197,6 +197,49 @@ fn prefix_respects_the_limit() {
 }
 
 #[test]
+fn distinct_names_dedupe_sort_limit_and_exclude_files() {
+    let (_dir, db) = temp_db();
+    index(&db, "/Game/MyActor.h", ACTOR);
+    index(&db, "/Game/MyPawn.h", PAWN);
+    // The same declarations in a second file must not duplicate pairs.
+    index(&db, "/Game/Copy/MyActor.h", ACTOR);
+
+    let all = db.distinct_names(&[], 100).expect("names");
+    assert_eq!(
+        all,
+        vec![
+            ("AMyActor".to_string(), SymbolKind::Class),
+            ("AMyPawn".to_string(), SymbolKind::Class),
+            ("Ammo".to_string(), SymbolKind::Property),
+            ("Fire".to_string(), SymbolKind::Function),
+            ("Health".to_string(), SymbolKind::Property),
+        ],
+        "distinct and byte-ordered by name"
+    );
+
+    // Truncation keeps the lexicographically smallest names.
+    assert_eq!(db.distinct_names(&[], 2).expect("names"), all[..2].to_vec());
+
+    // Excluding one copy keeps names still declared elsewhere.
+    let names = db
+        .distinct_names(&["/Game/MyActor.h".into()], 100)
+        .expect("names");
+    assert_eq!(names, all);
+
+    // Excluding every declaring file removes the names.
+    let names: Vec<String> = db
+        .distinct_names(
+            &["/Game/MyActor.h".into(), "/Game/Copy/MyActor.h".into()],
+            100,
+        )
+        .expect("names")
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect();
+    assert_eq!(names, vec!["AMyPawn", "Ammo"]);
+}
+
+#[test]
 fn file_and_kind_queries_scope_correctly() {
     let (_dir, db) = temp_db();
     index(&db, "/Game/MyActor.h", ACTOR);

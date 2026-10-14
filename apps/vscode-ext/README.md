@@ -1,6 +1,27 @@
-# Penguin Unreal Tools for VS Code
+# Penguin for Unreal Engine — VS Code and Google Antigravity
 
-A thin desktop VS Code-compatible client for the Penguin native language server. Requires **VS Code API 1.85 or newer**, a trusted filesystem workspace, and a **protocol-v1** penguin-lsp binary on the extension host. It never falls back to the legacy Visual Studio backend.
+The free edition of PenguinExtension for VS Code and Google Antigravity (a VS Code fork: install the same `.vsix`).
+A desktop client for the Penguin native language server. Requires **VS Code API 1.85 or newer**, a trusted
+filesystem workspace, and a **protocol-v1** penguin-lsp binary on the extension host.
+
+## Features
+
+- **Completion, hover, Go To Definition** (F12 or Alt+U, D) for Unreal reflected symbols, with UPROPERTY/UFUNCTION/
+  UCLASS specifier completion.
+- **Penguin Dark / Penguin Light** color themes (Preferences → Color Theme) — the same palette as the Visual Studio
+  edition's Penguin Color Theme.
+- **Unreal coloring** in every theme: UE macros (bold), reflection specifiers, `meta=(…)` keys and indexed Unreal
+  classes/structs/enums/delegates/functions/properties. It works alongside the Microsoft C/C++ extension or clangd.
+  Change a color with `workbench.colorCustomizations` (ids `penguin.ueMacro`, `penguin.specifier`, `penguin.metaKey`,
+  `penguin.class`, `penguin.struct`, `penguin.enum`, `penguin.enumValue`, `penguin.delegate`, `penguin.function`,
+  `penguin.property`); turn it off with `penguin.unrealColoring.enabled`.
+- **Unreal Explorer** and **Symbol Inspector** in the Penguin sidebar (Alt+U, E).
+- **Signature help** after `(` on indexed Unreal functions.
+- **Generate Implementation** (Alt+U, I) — `.cpp` skeleton from a header declaration, Public/Private aware, with
+  `_Implementation`/`_Validate` for BlueprintNativeEvent and RPCs — and **Generate Getter/Setter** (Alt+U, G).
+
+Platform packages (`penguin-vscode-<platform>.vsix` for win32-x64, linux-x64, darwin-x64, darwin-arm64) are built by
+the `vscode-package` CI job; install one with *Extensions → … → Install from VSIX…*.
 
 ## Build and test locally
 

@@ -41,12 +41,15 @@ All keys are camelCase. Optional metadata may be null or absent. Do not invent i
 | --- | --- | --- |
 | penguin/status | {} | Status |
 | penguin/symbols | {query: string, limit?: number} | Symbol[] |
+| penguin/names | {sinceRevision?: string} | {revision: string, names: [name, kind][] or null, truncated: boolean} |
 | penguin/symbol | {id: string} | Symbol or null (stale/not found) |
 | penguin/inheritance | {name: string} | {bases: string[], derived: Symbol[]} |
 | penguin/reindex | {} | Job |
 | penguin/job | {id: string} | Job or null (expired/not found) |
 | penguin/cancelJob | {id: string} | {cancelled: boolean} |
 | penguin/ai | {task: "explain" or "generate", source: string, instruction?: string} | Job |
+
+`penguin/names` returns every distinct `[name, kind]` pair (not capped at the 200-result search limit) for editor-wide coloring: the persistent index plus declarations parsed from open buffers. As with other queries, disk declarations of a file open as a buffer are replaced by that buffer's parse. `kind` uses the Symbol kind strings (class, struct, interface, enum, function, property, delegate); enumerators are not indexed. Pairs are sorted by name, then kind (byte order). `revision` is opaque: the core index revision plus a hash of the exact result, so it changes whenever the set changes (indexing, buffer edits, open/close). When `sinceRevision` equals the current revision, `names` is null and the client keeps its cache. At most 200 000 pairs are returned; beyond that the list is truncated deterministically to the first 200 000 in sort order and `truncated` is true. Without a disk workspace only open-buffer names are returned. While an index job holds the database the call may fail with a busy or unavailable error; retry later.
 
 Custom methods return promptly; indexing and inference run as background jobs. Clients poll at a modest interval (e.g. 500ms), honor cancellation, and use bounded timeouts. No arbitrary filesystem reads or writes are exposed. Style diagnostics use standard textDocument/publishDiagnostics; clear on close/disable. Client configuration changes restart the server so roots/options cannot diverge from its current session.
 

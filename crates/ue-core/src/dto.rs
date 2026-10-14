@@ -11,6 +11,10 @@ pub const MAX_ROOTS: usize = 16;
 pub const MAX_CHANGED_FILES: usize = 256;
 pub const MAX_JOB_RESULT_BYTES: usize = 1024 * 1024;
 pub const MAX_ERROR_BYTES: usize = 4096;
+/// Hard cap on `(name, kind)` pairs returned by [`NamesRequest`].
+pub const MAX_NAMES: usize = 200_000;
+/// Hard cap on paths excluded from a [`NamesRequest`] (open editor buffers).
+pub const MAX_EXCLUDED_FILES: usize = 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -114,6 +118,36 @@ pub struct SearchRequest {
     pub query: String,
     #[serde(default = "default_limit")]
     pub limit: usize,
+}
+/// Every distinct indexed `(name, kind)` pair, for editor-wide coloring.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NamesRequest {
+    pub api_version: u32,
+    /// Stored index paths (exact `ue_db::path_key` spelling of the canonical
+    /// path) whose declarations are skipped, e.g. files open as live buffers.
+    #[serde(default)]
+    pub exclude_files: Vec<String>,
+    /// 1..=MAX_NAMES. Truncation keeps the byte-wise smallest names.
+    pub limit: usize,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NameDto {
+    pub name: String,
+    pub kind: String,
+}
+/// Not subject to the 1 MiB result budget: callers stream a bounded name list.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NamesResponse {
+    pub api_version: u32,
+    pub session_id: String,
+    /// Identifies the index contents: queries cannot overlap an index job.
+    pub revision: u64,
+    /// Sorted by name, then kind.
+    pub names: Vec<NameDto>,
+    pub truncated: bool,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

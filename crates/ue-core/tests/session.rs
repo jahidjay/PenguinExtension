@@ -643,3 +643,66 @@ fn os_lease_is_released_after_owner_process_is_killed() {
         session.close(false).await.unwrap();
     });
 }
+
+fn names(exclude_files: Vec<String>, limit: usize) -> NamesRequest {
+    NamesRequest {
+        api_version: API_VERSION,
+        exclude_files,
+        limit,
+    }
+}
+
+#[tokio::test]
+async fn names_are_distinct_sorted_bounded_and_track_revisions() {
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("A.h"), HEADER).unwrap();
+    fs::write(dir.path().join("B.h"), HEADER).unwrap();
+    let s = WorkspaceSession::open(config(dir.path())).await.unwrap();
+    indexed(&s).await;
+    let all = s.names(names(Vec::new(), MAX_NAMES)).await.unwrap();
+    let pairs: Vec<_> = all
+        .names
+        .iter()
+        .map(|n| (n.name.as_str(), n.kind.as_str()))
+        .collect();
+    assert_eq!(pairs, [("ATest", "class"), ("Run", "function")]);
+    assert!(!all.truncated);
+
+    let bounded = s.names(names(Vec::new(), 1)).await.unwrap();
+    assert_eq!(bounded.names.len(), 1);
+    assert_eq!(bounded.names[0].name, "ATest");
+    assert!(bounded.truncated);
+
+    // Excluding both declaring files (stored canonical spelling) hides them.
+    let stored: Vec<String> = s
+        .search(search("ATest", 20))
+        .await
+        .unwrap()
+        .symbols
+        .into_iter()
+        .map(|s| s.reference.file)
+        .collect();
+    assert_eq!(stored.len(), 2);
+    assert!(s.names(names(stored, 10)).await.unwrap().names.is_empty());
+
+    for bad in [0, MAX_NAMES + 1] {
+        assert_eq!(
+            s.names(names(Vec::new(), bad)).await.unwrap_err().code,
+            ErrorCode::InvalidInput
+        );
+    }
+    assert_eq!(
+        s.names(names(vec![String::new(); MAX_EXCLUDED_FILES + 1], 10))
+            .await
+            .unwrap_err()
+            .code,
+        ErrorCode::InvalidInput
+    );
+
+    fs::write(dir.path().join("C.h"), "UCLASS() class ANew {};").unwrap();
+    indexed(&s).await;
+    let next = s.names(names(Vec::new(), MAX_NAMES)).await.unwrap();
+    assert!(next.revision > all.revision);
+    assert!(next.names.iter().any(|n| n.name == "ANew"));
+    s.close(false).await.unwrap();
+}

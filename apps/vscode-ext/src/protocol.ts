@@ -1,7 +1,7 @@
 export const methods = {
     status: 'penguin/status', symbols: 'penguin/symbols', symbol: 'penguin/symbol',
     inheritance: 'penguin/inheritance', reindex: 'penguin/reindex', job: 'penguin/job',
-    cancelJob: 'penguin/cancelJob', ai: 'penguin/ai'
+    cancelJob: 'penguin/cancelJob', ai: 'penguin/ai', names: 'penguin/names'
 } as const;
 export interface SymbolDto {
     id: string; name: string; kind: 'class' | 'struct' | 'interface' | 'enum' | 'function' | 'property' | 'delegate';
@@ -65,6 +65,17 @@ export function assertCapabilities(value: unknown): void {
     }
     if (value.positionEncoding !== undefined && value.positionEncoding !== 'utf-16') { throw new Error('Penguin protocol v1 requires UTF-16 positions.'); }
 }
+export interface NamesDto { revision: string; names: Array<[string, string]> | null; }
+export function namesDto(value: unknown): NamesDto {
+    if (!object(value) || typeof value.revision !== 'string') { return invalid('names'); }
+    if (value.names === null || value.names === undefined) { return { revision: value.revision, names: null }; }
+    if (!Array.isArray(value.names)) { return invalid('names'); }
+    const names: Array<[string, string]> = [];
+    for (const pair of value.names) {
+        if (Array.isArray(pair) && typeof pair[0] === 'string' && typeof pair[1] === 'string') { names.push([pair[0], pair[1]]); }
+    }
+    return { revision: value.revision, names };
+}
 export class Protocol {
     private sessionId: string | undefined;
     constructor(private readonly rpc: Rpc, private readonly current: () => boolean) {}
@@ -92,6 +103,10 @@ export class Protocol {
     async symbols(query: string, signal?: AbortSignal): Promise<SymbolDto[]> {
         if (Buffer.byteLength(query, 'utf8') > 512) { throw new Error('Symbol query must be at most 512 UTF-8 bytes.'); }
         return symbolsDto(await this.call(methods.symbols, { query, limit: 100 }, signal));
+    }
+    /** Every indexed name with its kind; `names` is null when unchanged since `sinceRevision`. */
+    async names(sinceRevision: string | undefined, signal?: AbortSignal): Promise<NamesDto> {
+        return namesDto(await this.call(methods.names, sinceRevision === undefined ? {} : { sinceRevision }, signal));
     }
     async symbol(id: string): Promise<SymbolDto> {
         const result = await this.call(methods.symbol, { id });

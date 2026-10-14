@@ -60,7 +60,18 @@ jobs:
       - run: npm test
       - run: npm run build
   vscode-package:
-    runs-on: windows-latest
+    # One .vsix per platform (VS Code and Google Antigravity install the same file).
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, target: win32-x64 }
+          - { os: ubuntu-22.04, target: linux-x64 }
+          - { os: macos-13, target: darwin-x64 }
+          - { os: macos-latest, target: darwin-arm64 }
+    runs-on: ${{ matrix.os }}
+    env:
+      PENGUIN_PACKAGE_TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -70,14 +81,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Use a symlink-free temp directory
+        shell: bash
+        run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - run: cargo build --locked --release -p ue-lsp
       - run: python scripts/stage-vscode-server.py
       - run: npm ci
         working-directory: apps/vscode-ext
       - run: npm run package
         working-directory: apps/vscode-ext
-      - run: python scripts/verify_package.py vscode apps/vscode-ext/dist/penguin-vscode.vsix
-      - run: python scripts/smoke_package.py vscode apps/vscode-ext/dist/penguin-vscode.vsix
+      - run: python scripts/verify_package.py vscode apps/vscode-ext/dist/penguin-vscode-${{ matrix.target }}.vsix
+      - run: python scripts/smoke_package.py vscode apps/vscode-ext/dist/penguin-vscode-${{ matrix.target }}.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: penguin-vscode-${{ matrix.target }}
+          path: apps/vscode-ext/dist/penguin-vscode-${{ matrix.target }}.vsix
   visual-studio:
     runs-on: windows-2022
     steps:

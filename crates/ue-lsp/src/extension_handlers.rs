@@ -2,7 +2,7 @@
 use super::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Weak,
@@ -12,6 +12,8 @@ const REFERENCES: usize = 1024;
 const AI_RETAINED: usize = 32;
 const AI_CONCURRENT: usize = 2;
 const JOB_TTL: Duration = Duration::from_secs(300);
+/// A whole-engine DISTINCT scan is slower than a bounded search.
+const NAMES_TIMEOUT: Duration = Duration::from_secs(5);
 pub(super) fn memory_session_id() -> String {
     static NEXT: AtomicU64 = AtomicU64::new(0);
     format!(
@@ -361,6 +363,83 @@ impl Backend {
             return Err(Error::invalid_params("limit must be positive"));
         }
         Ok(self.register(self.search_references(params.query, limit).await?))
+    }
+    /// Every distinct indexed `(name, kind)` pair plus live-buffer declarations,
+    /// for editor-wide coloring. Disk rows from files open as buffers are
+    /// replaced by the buffer's parse, like other queries. The revision is the
+    /// core index revision plus a hash of the exact result, so it changes
+    /// whenever (and only when) the returned set changes.
+    pub async fn penguin_names(&self, params: NamesParams) -> Result<Names> {
+        let (core, buffers) = {
+            let state = self.state();
+            if state.stopping {
+                return Err(unavailable("Session is stopping"));
+            }
+            (state.core.clone(), state.buffers.clone())
+        };
+        let (live, exclude) = spawn_blocking(move || {
+            let mut live = BTreeSet::new();
+            let mut exclude = BTreeSet::new();
+            for (uri, buffer) in &buffers {
+                if let Ok(file) = uri.to_file_path() {
+                    // The core stores canonical paths; match its spelling.
+                    exclude.insert(path_key(&resolved_path(&file)));
+                    exclude.insert(path_key(&file));
+                }
+                for symbol in &buffer.document().parsed.symbols {
+                    live.insert((symbol.name.clone(), symbol.kind.as_str().to_string()));
+                }
+            }
+            (live, exclude)
+        })
+        .await
+        .map_err(|_| Error::internal_error())?;
+        let (core_revision, disk, disk_truncated) = if let Some(core) = core {
+            let response = tokio::time::timeout(
+                NAMES_TIMEOUT,
+                core.names(ue_core::NamesRequest {
+                    api_version: 1,
+                    // Beyond the cap, extra disk names only over-color.
+                    exclude_files: exclude
+                        .into_iter()
+                        .take(ue_core::MAX_EXCLUDED_FILES)
+                        .collect(),
+                    limit: ue_core::MAX_NAMES,
+                }),
+            )
+            .await
+            .map_err(|_| unavailable("Workspace query busy; retry after indexing"))?
+            .map_err(core_error)?;
+            (
+                response.revision.to_string(),
+                response.names,
+                response.truncated,
+            )
+        } else {
+            ("live".to_string(), Vec::new(), false)
+        };
+        let since = params.since_revision;
+        spawn_blocking(move || {
+            use std::hash::{Hash, Hasher};
+            let mut all = live;
+            all.extend(disk.into_iter().map(|n| (n.name, n.kind)));
+            // Disk rows arrive sorted and capped, so the first MAX_NAMES pairs
+            // of the union are exact: unfetched disk rows sort after all of them.
+            let truncated = disk_truncated || all.len() > ue_core::MAX_NAMES;
+            let names: Vec<(String, String)> = all.into_iter().take(ue_core::MAX_NAMES).collect();
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            names.hash(&mut hasher);
+            truncated.hash(&mut hasher);
+            let revision = format!("{core_revision}-{:016x}", hasher.finish());
+            let current = since.as_deref() == Some(revision.as_str());
+            Names {
+                revision,
+                names: (!current).then_some(names),
+                truncated,
+            }
+        })
+        .await
+        .map_err(|_| Error::internal_error())
     }
     pub async fn penguin_symbol(&self, params: IdParams) -> Result<Option<Symbol>> {
         let reference = {

@@ -313,6 +313,45 @@ impl WorkspaceSession {
         })
         .await
     }
+    /// Every distinct `(name, kind)` pair in the index, sorted by name then kind
+    /// and capped at `limit` (at most [`MAX_NAMES`]). Files are not re-validated
+    /// against the filesystem per row (too costly for a whole engine); the
+    /// namespace only ever contains headers indexed under these roots.
+    pub async fn names(&self, request: NamesRequest) -> Result<NamesResponse> {
+        version(request.api_version)?;
+        if !(1..=MAX_NAMES).contains(&request.limit) {
+            return Err(invalid("limit must be 1..=200000"));
+        }
+        if request.exclude_files.len() > MAX_EXCLUDED_FILES {
+            return Err(invalid("excludeFiles must contain at most 1024 paths"));
+        }
+        if request
+            .exclude_files
+            .iter()
+            .any(|f| f.len() > MAX_PATH_BYTES || f.contains(char::from(0)))
+        {
+            return Err(invalid("invalid path length or NUL"));
+        }
+        self.query(move |this, db, revision| {
+            let mut rows = db.distinct_names(&request.exclude_files, request.limit + 1)?;
+            let truncated = rows.len() > request.limit;
+            rows.truncate(request.limit);
+            Ok(NamesResponse {
+                api_version: API_VERSION,
+                session_id: this.inner.id.clone(),
+                revision,
+                names: rows
+                    .into_iter()
+                    .map(|(name, kind)| NameDto {
+                        name,
+                        kind: kind.as_str().into(),
+                    })
+                    .collect(),
+                truncated,
+            })
+        })
+        .await
+    }
     pub async fn file_symbols(&self, request: FileSymbolsRequest) -> Result<SymbolsResponse> {
         version(request.api_version)?;
         limit(request.limit)?;

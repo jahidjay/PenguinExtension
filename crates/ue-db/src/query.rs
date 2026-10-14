@@ -153,6 +153,53 @@ impl Db {
         collect(&conn, &sql, rusqlite::params![pattern, limit as i64])
     }
 
+    /// Distinct `(name, kind)` pairs across the whole store, sorted by name then
+    /// kind (SQLite BINARY collation, i.e. byte order, which matches `String`'s
+    /// `Ord`). `limit` caps the number of pairs; truncation therefore keeps the
+    /// lexicographically smallest names. Rows from files whose stored path is in
+    /// `exclude_paths` (exact [`path_key`] spelling) are skipped, so callers can
+    /// overlay unsaved editor buffers. Kinds unknown to this build are dropped.
+    pub fn distinct_names(
+        &self,
+        exclude_paths: &[String],
+        limit: usize,
+    ) -> Result<Vec<(String, SymbolKind)>> {
+        let conn = self.conn()?;
+        let (sql, params): (String, Vec<&dyn rusqlite::ToSql>) = if exclude_paths.is_empty() {
+            (
+                "SELECT DISTINCT name, kind FROM symbols ORDER BY name, kind LIMIT ?1".into(),
+                Vec::new(),
+            )
+        } else {
+            let marks = (2..exclude_paths.len() + 2)
+                .map(|i| format!("?{i}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            (
+                format!(
+                    "SELECT DISTINCT s.name, s.kind FROM symbols s JOIN files f ON f.id = s.file_id \
+                     WHERE f.path NOT IN ({marks}) ORDER BY s.name, s.kind LIMIT ?1"
+                ),
+                exclude_paths.iter().map(|p| p as &dyn rusqlite::ToSql).collect(),
+            )
+        };
+        let limit = limit.min(i64::MAX as usize) as i64;
+        let mut all: Vec<&dyn rusqlite::ToSql> = vec![&limit];
+        all.extend(params);
+        let mut stmt = conn.prepare(&sql)?;
+        let rows = stmt.query_map(all.as_slice(), |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (name, kind) = row?;
+            if let Some(kind) = SymbolKind::from_name(&kind) {
+                out.push((name, kind));
+            }
+        }
+        Ok(out)
+    }
+
     /// Ancestors of `name`, nearest first, excluding `name` itself.
     ///
     /// Breadth-first so a class with several bases reports its direct parents

@@ -26,6 +26,7 @@ pub fn service() -> (LspService<Backend>, ClientSocket) {
     LspService::build(Backend::new)
         .custom_method("penguin/status", Backend::penguin_status)
         .custom_method("penguin/symbols", Backend::penguin_symbols)
+        .custom_method("penguin/names", Backend::penguin_names)
         .custom_method("penguin/symbol", Backend::penguin_symbol)
         .custom_method("penguin/inheritance", Backend::penguin_inheritance)
         .custom_method("penguin/reindex", Backend::penguin_reindex)

@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import { Backend } from './backend';
 import { registerCommands } from './commands';
+import { UnrealColoring } from './unrealColoring';
+import { NameStore } from './nameStore';
+import { registerExplorer } from './explorer';
+import { registerGenerators } from './generators';
 let backend: Backend | undefined;
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
     const output = vscode.window.createOutputChannel('Penguin');
@@ -12,6 +16,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(output, status);
     backend = new Backend(context, output, status);
     registerCommands(context, backend);
+    const names = new NameStore(backend);
+    context.subscriptions.push(names, new UnrealColoring(names));
+    registerExplorer(context, backend, names);
+    registerGenerators(context, backend);
     await backend.restart();
 }
 export async function deactivate(): Promise<void> {

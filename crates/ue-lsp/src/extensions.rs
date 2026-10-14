@@ -18,6 +18,22 @@ pub struct IdParams {
 pub struct NameParams {
     pub name: String,
 }
+/// `penguin/names` parameters. A matching `sinceRevision` yields `names: null`.
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct NamesParams {
+    pub since_revision: Option<String>,
+}
+/// `penguin/names` result: `[name, kind]` pairs sorted by name, then kind.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Names {
+    pub revision: String,
+    /// `null` when the client's `sinceRevision` is still current.
+    pub names: Option<Vec<(String, String)>>,
+    /// True when the 200 000-pair cap dropped the lexicographically largest names.
+    pub truncated: bool,
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -28,7 +28,7 @@ async function pickSymbol(session: Session, prompt = 'Search Unreal symbols', in
     assertSession(session);
     return selected?.symbol;
 }
-async function navigate(session: Session, symbol: SymbolDto): Promise<void> {
+export async function navigate(session: Session, symbol: SymbolDto): Promise<void> {
     assertSession(session);
     let uri: vscode.Uri;
     if (symbol.file.startsWith('untitled:')) {
