@@ -18,6 +18,11 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      # Path checks reject symlinked ancestors by design; macOS's default
+      # TMPDIR (/var/folders, /var -> /private/var) would trip them in tests.
+      - name: Use a symlink-free temp directory
+        shell: bash
+        run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - run: cargo test --locked --workspace
       - run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - run: cargo fmt --all -- --check
@@ -105,5 +110,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev
       - run: npm ci
       - run: npm run build
+      # See the rust job: macOS's default TMPDIR has a symlinked ancestor.
+      - name: Use a symlink-free temp directory
+        shell: bash
+        run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml
       - run: npm run desktop:portable -- -- --locked

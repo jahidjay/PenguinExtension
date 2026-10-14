@@ -941,7 +941,7 @@ mod tests {
         fs::remove_file(&deleted).unwrap();
         let directory = root.join("Hidden");
         let original = fs::metadata(&directory).unwrap().permissions();
-        fs::set_permissions(&directory, fs::Permissions::from_mode(0)).unwrap();
+        fs::set_permissions(&directory, fs::Permissions::from_mode(0o000)).unwrap();
         let denied = fs::read_dir(&directory).is_err();
         let report = index_workspace(&db, &[root]);
         fs::set_permissions(&directory, original).unwrap();
