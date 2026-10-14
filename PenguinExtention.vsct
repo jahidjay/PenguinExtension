@@ -211,6 +211,11 @@
         <Icon guid="guidPenguinImages" id="bmpPenguin"/>
         <Strings><ButtonText>Penguin Self-Test</ButtonText><ToolTipText>Check every Penguin feature and write a report to Output → PenguinExtension (Alt+U, U)</ToolTipText></Strings>
       </Button>
+      <Button guid="guidPenguinExtensionCmdSet" id="OpenColorThemeId" priority="0x0410" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Icon guid="guidPenguinImages" id="bmpPenguin"/>
+        <Strings><ButtonText>Penguin Color Theme</ButtonText><ToolTipText>Choose the colors of keywords, classes, functions, enums, UE macros… (Alt+U, Shift+T)</ToolTipText></Strings>
+      </Button>
     </Buttons>
 
     <Bitmaps>
@@ -304,6 +309,7 @@
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="IntroduceVariableId" editor="guidVSStd97" key1="U" mod1="Alt" key2="X"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="AddForwardDeclarationId" editor="guidVSStd97" key1="U" mod1="Alt" key2="Z"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="SelfTestId" editor="guidVSStd97" key1="U" mod1="Alt" key2="U"/>
+    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenColorThemeId" editor="guidVSStd97" key1="U" mod1="Alt" key2="T" mod2="Shift"/>
     <!-- Visual Assist default keys, scoped to the text editor (where VA binds them). -->
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="ToggleHeaderSourceId" editor="guidTextEditorScope" key1="O" mod1="Alt"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="GoToImplementationId" editor="guidTextEditorScope" key1="G" mod1="Alt"/>
@@ -363,6 +369,7 @@
       <IDSymbol name="IntroduceVariableId" value="0x0909"/>
       <IDSymbol name="AddForwardDeclarationId" value="0x090A"/>
       <IDSymbol name="SelfTestId" value="0x0A00"/>
+      <IDSymbol name="OpenColorThemeId" value="0x0A01"/>
     </GuidSymbol>
   </Symbols>
 

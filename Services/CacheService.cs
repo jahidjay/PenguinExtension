@@ -240,7 +240,7 @@ namespace PenguinExtention.Services
             }
         }
 
-        /// <summary>Coloring categories: 1 = type, 2 = function, 3 = macro, 4 = enum value.</summary>
+        /// <summary>Name → coloring category (<see cref="NameCategory"/>), rebuilt only when the index changes.</summary>
         public Dictionary<string, byte> GetNameCategories(out int version)
         {
             _lock.EnterReadLock();
@@ -255,14 +255,18 @@ namespace PenguinExtention.Services
                     byte cat;
                     switch (s.Kind)
                     {
-                        case UnrealSymbolKind.Class: case UnrealSymbolKind.Struct: case UnrealSymbolKind.Interface:
-                        case UnrealSymbolKind.Enum: case UnrealSymbolKind.Typedef: case UnrealSymbolKind.Delegate: cat = 1; break;
-                        case UnrealSymbolKind.Function: cat = 2; break;
-                        case UnrealSymbolKind.Macro: cat = 3; break;
-                        case UnrealSymbolKind.EnumValue: cat = 4; break;
+                        case UnrealSymbolKind.Class: case UnrealSymbolKind.Interface: case UnrealSymbolKind.Typedef: cat = NameCategory.Class; break;
+                        case UnrealSymbolKind.Struct: cat = NameCategory.Struct; break;
+                        case UnrealSymbolKind.Enum: cat = NameCategory.Enum; break;
+                        case UnrealSymbolKind.Delegate: cat = NameCategory.Delegate; break;
+                        case UnrealSymbolKind.Macro: cat = NameCategory.Macro; break;
+                        case UnrealSymbolKind.Function: cat = NameCategory.Function; break;
+                        case UnrealSymbolKind.EnumValue: cat = NameCategory.EnumValue; break;
+                        case UnrealSymbolKind.Property: cat = s.IsEngineSymbol ? NameCategory.EngineProperty : NameCategory.Property; break;
                         default: continue;
                     }
-                    // Types win over functions (constructors share the class name).
+                    // Lower category wins: types beat functions (constructors share the class name),
+                    // and a project property beats an engine one of the same name.
                     if (!map.TryGetValue(s.Name, out var existing) || cat < existing) map[s.Name] = cat;
                 }
                 _categories = map;
@@ -273,6 +277,13 @@ namespace PenguinExtention.Services
             {
                 _lock.ExitReadLock();
             }
+        }
+
+        /// <summary>Coloring categories from <see cref="GetNameCategories"/>; lower value wins on name clashes.</summary>
+        public static class NameCategory
+        {
+            public const byte Class = 1, Struct = 2, Enum = 3, Delegate = 4, Macro = 5, Function = 6,
+                EnumValue = 7, Property = 8, EngineProperty = 9;
         }
 
         private volatile Dictionary<string, byte> _categories;

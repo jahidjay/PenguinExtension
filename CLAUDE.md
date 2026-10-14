@@ -28,6 +28,7 @@ Commands/
   RefactorCommands.cs              — Find References, Rename (+CoreRedirects), Add Include, Create Declaration, etc.
   PenguinEditor.cs                 — Shared editor helpers; multi-file edits in one linked undo
 Editor/                      — Classifier (UE coloring), reference-highlight tagger, signature help
+  UnrealClassifier.cs              — Unreal syntax coloring: types/structs/enums/delegates/functions/properties + specifiers/meta keys
 Completion/
   UnrealCompletionSource.cs         — IAsyncCompletionSource: symbols + macro specifiers
   UnrealCompletionSourceProvider.cs — MEF factory
@@ -46,12 +47,14 @@ Services/
   HeaderSourceResolver.cs    — .h ↔ .cpp incl. Public/Private; module-relative include paths
   SolutionFileIndex.cs       — Background project file list for Open File
   PenguinOptionsPage.cs      — Tools → Options page
+  ThemeModel.cs / ThemeService.cs — Penguin Color Theme: entries + defaults, theme.json, runtime apply (SYNTAX_COLOR_PLAN.md)
 UI/
   UnrealExplorerWindow.cs          — Symbol Explorer tool window
   SymbolInspectorWindow.cs         — Live symbol documentation panel
   SymbolInspectorControl.xaml/.cs  — WPF control for inspector
   ShortcutsReferenceWindow.cs      — Keyboard shortcuts reference
   ShortcutsReferenceControl.xaml/.cs — WPF control for shortcuts
+  ColorThemeWindow.cs              — Penguin Color Theme window (code-built WPF)
   QuickPickDialog.cs / RenameDialog.cs — code-built WPF dialogs
   FindReferencesWindow.cs / DefinitionPreviewWindow.cs — tool windows
 ```
@@ -89,6 +92,7 @@ plain C++ members of reflected classes. Bump `ExtractorVersion` in UnrealIndexer
 | G   | Generate Getter/Setter |
 | S   | Symbol Inspector |
 | K   | Keyboard Shortcuts |
+| Shift+T | Penguin Color Theme window |
 | Y / O / H / J / R / M | Find Symbol / Open File / Toggle Header-Source / Go To Implementation / Go To Related / List Methods |
 | F / W | Find References / Definition Preview window |
 | N / A / C / V / P / Q | Rename / Add Include / Create Declaration / Move Implementation / Encapsulate Field / Document Method |

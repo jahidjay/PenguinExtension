@@ -78,6 +78,33 @@ namespace PenguinExtention.Commands
                 Line(false, "Index not loaded" + (cache == null ? " (no project detected yet)" : " yet"));
             }
 
+            // ── Syntax coloring: name categories + specifier scanner on a fixed sample ──
+            if (cache != null && cache.IsLoaded)
+            {
+                var categories = cache.GetNameCategories(out _);
+                var counts = categories.Values.GroupBy(c => c).OrderBy(g => g.Key)
+                    .Select(g => CategoryName(g.Key) + " " + g.Count());
+                Line(categories.Count > 0, "Coloring names: " + string.Join(", ", counts));
+            }
+            Line(ThemeService.IsReady && ThemeService.LoadError == null, !ThemeService.IsReady
+                ? "Color theme: not initialized"
+                : "Color theme: " + (ThemeService.Settings.Enabled
+                    ? "on, Penguin " + (ThemeService.IsDarkEditor ? "Dark" : "Light") + ", " + ThemeService.AppliedCount + " classifications colored, " +
+                      ThemeService.Settings.Overrides.Count + " customized entries"
+                    : "off (Visual Studio colors)") +
+                  (ThemeService.LoadError == null ? "" : " — theme.json error: " + ThemeService.LoadError) +
+                  " — Alt+U, Shift+T opens the theme window");
+            if (ThemeService.Missing.Count > 0)
+                Line(null, "Not registered (yet) — open a C++ file, then re-run: " + string.Join(", ", ThemeService.Missing));
+            var colored = new List<string>();
+            var macroState = default(UnrealClassifier.MacroState);
+            const string sample = "UPROPERTY(EditAnywhere, Category=\"Stats\", meta=(ClampMin=\"0\")) float Health; // Hidden";
+            UnrealClassifier.Scan(sample, ref macroState, null, (index, length, kind) =>
+                colored.Add(kind + ":" + sample.Substring(index, length)));
+            var coloredText = string.Join(" ", colored);
+            Line(coloredText == "Macro:UPROPERTY Specifier:EditAnywhere Specifier:Category Specifier:meta MetaKey:ClampMin",
+                "Specifier coloring → " + coloredText);
+
             // ── Editor hooks: which pipelines has VS actually called? ──
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             report.AppendLine("   Editor hooks (type in a .h/.cpp file first, then run Self-Test again):");
@@ -106,6 +133,23 @@ namespace PenguinExtention.Commands
 
         private static void ProbeLine(StringBuilder report, string feature) =>
             report.AppendLine((FeatureProbe.Seen(feature) ? "   ✅ " : "   ▫ ") + feature + ": " + FeatureProbe.Describe(feature));
+
+        private static string CategoryName(byte category)
+        {
+            switch (category)
+            {
+                case CacheService.NameCategory.Class: return "classes";
+                case CacheService.NameCategory.Struct: return "structs";
+                case CacheService.NameCategory.Enum: return "enums";
+                case CacheService.NameCategory.Delegate: return "delegates";
+                case CacheService.NameCategory.Macro: return "macros";
+                case CacheService.NameCategory.Function: return "functions";
+                case CacheService.NameCategory.EnumValue: return "enum values";
+                case CacheService.NameCategory.Property: return "project properties";
+                case CacheService.NameCategory.EngineProperty: return "engine properties";
+                default: return "category " + category;
+            }
+        }
 
         /// <summary>Key bindings VS actually registered for our commands (proves the .vsct shortcuts loaded).</summary>
         private static IEnumerable<string> KeyBindings()

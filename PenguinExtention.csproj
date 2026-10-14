@@ -58,6 +58,8 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Xaml" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="WindowsBase" />
     <Reference Include="System.ComponentModel.Composition" />
   </ItemGroup>
@@ -104,6 +106,10 @@
     <Compile Include="Completion\PenguinCompletionEngine.cs" />
     <Compile Include="UI\PenguinCompletionPopup.cs" />
     <Compile Include="UI\PenguinTheme.cs" />
+    <Compile Include="UI\ColorThemeWindow.cs" />
+    <Compile Include="UI\ColorThemeOptionsPage.cs" />
+    <Compile Include="Services\ThemeModel.cs" />
+    <Compile Include="Services\ThemeService.cs" />
     <Compile Include="UI\PenguinParameterInfoPopup.cs" />
     <Compile Include="Editor\PenguinKeyFilter.cs" />
     <Compile Include="Services\CppSymbolExtractor.cs" />

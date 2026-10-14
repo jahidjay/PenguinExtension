@@ -61,7 +61,11 @@
                 <Grid.RowDefinitions>
                     <RowDefinition/>
                     <RowDefinition/>
+                    <RowDefinition/>
                 </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, Shift+T" Margin="0,2"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="Penguin Color Theme — Choose colors for keywords, classes, functions, enums, UE macros…" Margin="4,2" TextWrapping="Wrap"/>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, S" Margin="0,2"/>
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Symbol Inspector — Live documentation for the symbol under cursor" Margin="4,2" TextWrapping="Wrap"/>

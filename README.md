@@ -75,6 +75,18 @@ All use the first chord **Ctrl+Shift+U**, then:
 | S | Symbol Inspector |
 | K | Keyboard Shortcuts |
 
+## Penguin Color Theme
+
+**Alt+U, Shift+T** opens the Penguin Color Theme window. It sets the colors of all C++ code in Visual Studio:
+keywords (`void`, `if`), strings, numbers, comments, classes, structs, enums, functions, properties, locals,
+parameters, UE macros (`UPROPERTY`), specifiers (`EditAnywhere`) and `meta=(...)` keys.
+
+- The default is **Penguin Dark** (based on VS Dark+) with a matching **Penguin Light**; VS's theme picks the set.
+- Each row has a color picker, a hex box, bold/italic and a reset button; the preview and open editors update live.
+- "Penguin color mode" turns the theme on/off. Off restores Visual Studio's own colors; nothing is written to
+  Tools → Options → Fonts and Colors.
+- Your colors are saved in `%LOCALAPPDATA%\PenguinExtension\theme.json` and can be exported/imported.
+
 ## Legacy Visual Studio backend
 
 The following architecture describes the original C# backend, not the Rust Core backend. Preserve its behavior while testing the explicitly selected Core backend in an experimental IDE profile.

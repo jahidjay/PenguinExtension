@@ -60,5 +60,6 @@ namespace PenguinExtention.Commands
         public const int AddForwardDeclarationId = 0x090A; // Z
 
         public const int SelfTestId = 0x0A00;              // U — Penguin Self-Test
+        public const int OpenColorThemeId = 0x0A01;        // Shift+T — Penguin Color Theme window
     }
 }

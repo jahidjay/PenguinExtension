@@ -45,15 +45,21 @@ namespace PenguinExtention
                        Style = VsDockStyle.Linked,
                        Window = ToolWindowGuids.SolutionExplorer,
                        Orientation = ToolWindowOrientation.Bottom)]
+    [ProvideToolWindow(typeof(ColorThemeWindow),
+                       Style = VsDockStyle.Linked,
+                       Window = ToolWindowGuids.SolutionExplorer,
+                       Orientation = ToolWindowOrientation.Right)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(PenguinOptionsPage),
                        "PenguinExtension", "General", 0, 0, true)]
+    [ProvideOptionPage(typeof(ColorThemeOptionsPage),
+                       "PenguinExtension", "Color Theme", 0, 0, true)]
     public sealed class PenguinExtensionPackage : AsyncPackage
     {
         public const string PackageGuidString = "7D9B3C2E-8A4F-4B1D-9E5C-6F0A2D3B8C7E";
 
         /// <summary>Keep in step with Identity/@Version in source.extension.vsixmanifest.</summary>
-        internal const string Version = "1.8";
+        internal const string Version = "1.10";
 
         private SQLiteCache _db;
         private UnrealIndexer _indexer;
@@ -80,6 +86,7 @@ namespace PenguinExtention
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             Instance = this;
             await RegisterCommandsAsync().ConfigureAwait(true);
+            await ThemeService.InitializeAsync(this).ConfigureAwait(true);
             // Visible proof the extension loaded: Output window (PenguinExtension pane) + status bar.
             WriteToOutputWindow("🐧 PenguinExtension " + Version + " loaded in Visual Studio " + VsVersion() +
                 " — Alt+U, K lists shortcuts; Tools → Penguin Extension 🐧 → Self-Test checks every feature.");
@@ -282,6 +289,10 @@ namespace PenguinExtention
             // Open Shortcuts Reference
             RegisterToolWindowCommand(commandService,
                 PenguinExtensionCommandIds.OpenShortcutsReferenceId, typeof(ShortcutsReferenceWindow));
+
+            // Open Penguin Color Theme
+            RegisterToolWindowCommand(commandService,
+                PenguinExtensionCommandIds.OpenColorThemeId, typeof(ColorThemeWindow));
         }
 
         // ponytail: one helper instead of repeating tool window opening boilerplate

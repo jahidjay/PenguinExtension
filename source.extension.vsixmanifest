@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="PenguinExtention.831518ca-a06f-433a-9cfb-15b7a6538550" Version="1.8" Language="en-US" Publisher="Jahid Ahsan Yasin" />
+    <Identity Id="PenguinExtention.831518ca-a06f-433a-9cfb-15b7a6538550" Version="1.10" Language="en-US" Publisher="Jahid Ahsan Yasin" />
     <DisplayName>PenguinExtension 🐧 C++ Navigator</DisplayName>
     <Description>Visual Assist / Rider-style C++ productivity for Unreal Engine and plain C/C++ (SDL2) projects in Visual Studio 2022 and 2026: find symbol, open file, header/source toggle, find references, rename with CoreRedirects, refactorings, signature help, live definition preview, and Unreal coloring. Powered by a persistent SQLite cache and async background indexing.</Description>
     <Icon>Resources\PenguinIcon.png</Icon>
