@@ -81,6 +81,19 @@ namespace PenguinExtention.Completion
             CancellationToken token)
         {
             if (!BackendService.CompletionEnabled) return CompletionStartData.DoesNotParticipateInCompletion;
+            FeatureProbe.Mark(ProbeAsync, trigger.Reason + (trigger.Character == '\0' ? "" : " '" + trigger.Character + "'"));
+            try { return Initialize(trigger, triggerLocation); }
+            catch (Exception ex)
+            {
+                PenguinLog.Error("Completion", ex);
+                return CompletionStartData.DoesNotParticipateInCompletion;
+            }
+        }
+
+        internal const string ProbeAsync = "Completion (async pipeline)";
+
+        private CompletionStartData Initialize(CompletionTrigger trigger, SnapshotPoint triggerLocation)
+        {
             var snapshot = triggerLocation.Snapshot;
             if (BackendService.IsCore)
             {
@@ -98,6 +111,10 @@ namespace PenguinExtention.Completion
             var macroContext = DetectMacroContext(snapshot, triggerLocation);
             if (macroContext != null)
             {
+                // Only open on specifier-typing triggers, not on '=', ')', quotes or spaces inside the macro.
+                if (trigger.Reason == CompletionTriggerReason.Insertion &&
+                    !(char.IsLetter(trigger.Character) || trigger.Character == '_' || trigger.Character == '(' || trigger.Character == ','))
+                    return CompletionStartData.DoesNotParticipateInCompletion;
                 // ponytail: find the start of the current specifier token being typed
                 int specStart = column - 1;
                 while (specStart >= 0 && IsSpecifierChar(lineText[specStart]))
@@ -176,6 +193,21 @@ namespace PenguinExtention.Completion
             CancellationToken token)
         {
             if (!BackendService.CompletionEnabled) return CompletionContext.Empty;
+            try { return await GetContextAsync(session, triggerLocation, applicableToSpan, token).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return CompletionContext.Empty; }
+            catch (Exception ex)
+            {
+                PenguinLog.Error("Completion", ex);
+                return CompletionContext.Empty;
+            }
+        }
+
+        private async Task<CompletionContext> GetContextAsync(
+            IAsyncCompletionSession session,
+            SnapshotPoint triggerLocation,
+            SnapshotSpan applicableToSpan,
+            CancellationToken token)
+        {
             if (BackendService.IsCore)
             {
                 try
@@ -225,18 +257,47 @@ namespace PenguinExtention.Completion
             // ── Normal symbol mode ──────────────────────────────────
             var cache = CacheService.Instance;
             if (cache == null || !cache.IsLoaded)
+            {
+                PenguinLog.Info("Completion", "index not loaded yet — no Unreal suggestions");
                 return CompletionContext.Empty;
+            }
 
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             var prefix = applicableToSpan.GetText();
-            var symbols = await BackendService.SearchAsync(prefix, 100, token).ConfigureAwait(false);
+            var owner = QualifierBefore(applicableToSpan.Start);
+            List<UnrealSymbol> symbols;
+            bool incomplete;
+            if (owner.kind == "::" || owner.kind == "member")
+            {
+                // Owner:: or obj./obj-> — only that owner's members (VC++ already knows unresolved member types).
+                if (owner.name == null || owner.name == "Super") return CompletionContext.Empty;
+                symbols = await Task.Run(() => cache.GetMembers(owner.name)
+                    .Where(s => prefix.Length == 0 || s.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    .Take(MaxItems).ToList(), token).ConfigureAwait(false);
+                incomplete = false;
+            }
+            else if (owner.kind != null || prefix.Length == 0)
+            {
+                return CompletionContext.Empty; // '.'/'->' on an unknown object, or nothing typed: leave it to VC++
+            }
+            else
+            {
+                symbols = await BackendService.SearchAsync(prefix, MaxItems, token).ConfigureAwait(false);
+                // A capped result is re-queried as the user types more, so "UCharMov" finds names beyond the first 500 "U…".
+                incomplete = symbols.Count >= MaxItems;
+            }
 
+            PenguinLog.Info("Completion", "async \"" + (owner.name != null ? owner.name + owner.kind : "") + prefix + "\" → " +
+                symbols.Count + " item(s)" + (incomplete ? " (more as you type)" : "") + " in " + watch.ElapsedMilliseconds + " ms");
             if (symbols.Count == 0)
                 return CompletionContext.Empty;
 
             var items = ImmutableArray.CreateBuilder<CompletionItem>(symbols.Count);
+            var seenNames = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var sym in symbols)
             {
+                if (!seenNames.Add(sym.Name + "|" + sym.Kind)) continue; // overloads/redeclarations: one entry
                 var icon = GetIcon(sym.Kind);
                 var suffix = sym.IsEngineSymbol ? " (Engine)" : "";
                 var sortText = $"{(sym.IsEngineSymbol ? "1" : "0")}_{sym.Name}";
@@ -258,7 +319,30 @@ namespace PenguinExtention.Completion
                 items.Add(item);
             }
 
-            return new CompletionContext(items.ToImmutable());
+            return new CompletionContext(items.ToImmutable(), null, InitialSelectionHint.RegularSelection,
+                ImmutableArray<CompletionFilterWithState>.Empty, incomplete);
+        }
+
+        private const int MaxItems = 500;
+
+        /// <summary>
+        /// What precedes the identifier being completed: ("::", "AActor") for AActor::Beg, ("member", null) for
+        /// obj.Beg / ptr->Beg (receiver type unknown to a regex index), (null, null) for a plain identifier.
+        /// </summary>
+        private static (string kind, string name) QualifierBefore(SnapshotPoint start)
+        {
+            var line = start.GetContainingLine();
+            var before = line.GetText().Substring(0, start.Position - line.Start.Position).TrimEnd();
+            if (before.EndsWith("::"))
+            {
+                var q = before.Substring(0, before.Length - 2).TrimEnd();
+                int i = q.Length;
+                while (i > 0 && IsIdentifierChar(q[i - 1])) i--;
+                var name = q.Substring(i);
+                return ("::", name.Length == 0 ? null : name);
+            }
+            if (before.EndsWith(".") || before.EndsWith("->")) return ("member", null);
+            return (null, null);
         }
 
         public async Task<object> GetDescriptionAsync(
@@ -282,58 +366,22 @@ namespace PenguinExtention.Completion
             // ── Normal symbol description ───────────────────────────
             if (!item.Properties.TryGetProperty("UnrealSymbol", out UnrealSymbol sym))
                 return null;
+            var body = await Task.Run(() => SymbolTooltip.Body(sym), token).ConfigureAwait(false);
+            return BuildTooltip(sym, body);
+        }
 
-            var elements = new List<object>();
-
-            // Signature
-            if (!string.IsNullOrEmpty(sym.Signature))
+        /// <summary>Rich (colored header) rendering of <see cref="SymbolTooltip"/> for async hosts.</summary>
+        internal static ContainerElement BuildTooltip(UnrealSymbol sym, List<string> body)
+        {
+            var elements = new List<object>
             {
-                elements.Add(new ClassifiedTextElement(
+                new ClassifiedTextElement(
                     new ClassifiedTextRun("keyword", sym.KindDisplay + " "),
-                    new ClassifiedTextRun("text", sym.Signature)));
-            }
-
-            // File location
-            var fileName = System.IO.Path.GetFileName(sym.FilePath);
-            elements.Add(new ClassifiedTextElement(
-                new ClassifiedTextRun("text", $"📁 {fileName}:{sym.LineNumber}")));
-
-            // Owner class
-            if (!string.IsNullOrEmpty(sym.OwnerClass))
-            {
-                elements.Add(new ClassifiedTextElement(
-                    new ClassifiedTextRun("text", $"📦 Member of {sym.OwnerClass}")));
-            }
-
-            // Inheritance chain for classes
-            if (sym.Kind == UnrealSymbolKind.Class || sym.Kind == UnrealSymbolKind.Struct)
-            {
-                var classInfo = await BackendService.ClassInfoAsync(sym, token).ConfigureAwait(false);
-                if (classInfo?.InheritanceChain?.Count > 0)
-                {
-                    var chain = string.Join(" → ", classInfo.InheritanceChain);
-                    elements.Add(new ClassifiedTextElement(
-                        new ClassifiedTextRun("text", $"🔗 {sym.Name} → {chain}")));
-                }
-            }
-
-            // Comment
-            if (!string.IsNullOrEmpty(sym.Comment))
-            {
-                elements.Add(new ClassifiedTextElement(
-                    new ClassifiedTextRun("text", $"📝 {sym.Comment}")));
-            }
-
-            // Source (engine vs project)
-            var source = sym.IsEngineSymbol ? "Engine" : "Project";
-            elements.Add(new ClassifiedTextElement(
-                new ClassifiedTextRun("text", $"[{source}]")));
-
-            var result = new ContainerElement(
-                ContainerElementStyle.Stacked,
-                elements.ToArray());
-
-            return result;
+                    new ClassifiedTextRun("text", string.IsNullOrEmpty(sym.Signature) ? sym.DisplayText : sym.Signature))
+            };
+            foreach (var line in body)
+                elements.Add(new ClassifiedTextElement(new ClassifiedTextRun("text", line)));
+            return new ContainerElement(ContainerElementStyle.Stacked, elements.ToArray());
         }
 
         // ── Macro context detection ─────────────────────────────────
@@ -344,7 +392,7 @@ namespace PenguinExtention.Completion
         /// or null if we're not in a macro context.
         /// ponytail: simple backward scan, no regex needed.
         /// </summary>
-        private static (string macroName, string existingText)?
+        internal static (string macroName, string existingText)?
             DetectMacroContext(ITextSnapshot snapshot, SnapshotPoint point)
         {
             // ponytail: scan backward from caret looking for unmatched '('
@@ -375,28 +423,35 @@ namespace PenguinExtention.Completion
             if (openParenPos < 0)
                 return null;
 
-            // Extract the word before '('
-            int wordEnd = openParenPos;
-            int wordStart = wordEnd - 1;
-            while (wordStart >= startPos && snapshot[wordStart] == ' ')
-                wordStart--; // skip whitespace between name and '('
-            int nameEnd = wordStart + 1;
-            while (wordStart >= startPos && char.IsLetterOrDigit(snapshot[wordStart]) || (wordStart >= startPos && snapshot[wordStart] == '_'))
-                wordStart--;
-            wordStart++;
-
-            if (wordStart >= nameEnd)
-                return null;
-
-            var macroName = snapshot.GetText(wordStart, nameEnd - wordStart);
-
-            if (!UnrealMacroSpecifiers.MacroNames.Contains(macroName))
-                return null;
+            var name = WordBefore(snapshot, openParenPos, startPos, out int nameStart);
+            if (name == null) return null;
 
             // Get the text between '(' and caret for filtering already-used specifiers
             var existingText = snapshot.GetText(openParenPos + 1, pos - openParenPos - 1);
 
-            return (macroName, existingText);
+            if (UnrealMacroSpecifiers.MacroNames.Contains(name))
+                return (name, existingText);
+
+            // meta = ( … ) inside a reflection macro: offer metadata keys.
+            if (name == "meta" && DetectMacroContext(snapshot, new SnapshotPoint(snapshot, nameStart)) != null)
+                return ("meta", existingText);
+            return null;
+        }
+
+        /// <summary>The identifier ending before <paramref name="end"/>, skipping whitespace (incl. newlines) and one '='.</summary>
+        private static string WordBefore(ITextSnapshot snapshot, int end, int limit, out int start)
+        {
+            int i = end - 1;
+            while (i >= limit && char.IsWhiteSpace(snapshot[i])) i--;
+            if (i >= limit && snapshot[i] == '=')
+            {
+                i--;
+                while (i >= limit && char.IsWhiteSpace(snapshot[i])) i--;
+            }
+            int nameEnd = i + 1;
+            while (i >= limit && IsIdentifierChar(snapshot[i])) i--;
+            start = i + 1;
+            return start < nameEnd ? snapshot.GetText(start, nameEnd - start) : null;
         }
 
         /// <summary>Build completion items for macro specifiers, filtering out already-used ones.</summary>
@@ -408,7 +463,9 @@ namespace PenguinExtention.Completion
 
             // ponytail: parse existing specifiers by splitting on commas
             var usedSpecifiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var part in existingText.Split(','))
+            var parts = existingText.Split(',');
+            // The last part is the token being typed — it must not hide itself.
+            foreach (var part in parts.Take(parts.Length - 1))
             {
                 var trimmed = part.Trim();
                 // Extract just the specifier name (before '=' or '(' if present)

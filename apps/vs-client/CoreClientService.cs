@@ -30,6 +30,14 @@ namespace PenguinExtention.Core
         private volatile bool stopping;
         private volatile bool ready;
         public bool IsReady => ready && !stopping;
+        /// <summary>ServerCapabilities from the initialize result; empty until started.</summary>
+        public JObject Capabilities { get; private set; } = new JObject();
+        /// <summary>True when the server advertises an LSP provider (e.g. "referencesProvider") as enabled.</summary>
+        public bool Supports(string provider)
+        {
+            var value = Capabilities[provider];
+            return value != null && value.Type != JTokenType.Null && !(value.Type == JTokenType.Boolean && !(bool)value);
+        }
         public event Action<string> Message;
         public event Action<JObject> Diagnostics;
         public event Action Failed;
@@ -83,6 +91,7 @@ namespace PenguinExtention.Core
                         }}
                     }, timeout.Token), timeout.Token).ConfigureAwait(false);
                     Protocol.ValidateVersion(result);
+                    Capabilities = result?["capabilities"] as JObject ?? new JObject();
                     await rpc.NotifyWithParameterObjectAsync("initialized", new { }).ConfigureAwait(false);
                     ready = true;
                 }

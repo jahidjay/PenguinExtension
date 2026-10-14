@@ -91,6 +91,8 @@ namespace PenguinExtention.Models
                     case UnrealSymbolKind.Delegate:  return "\uE8FC";
                     case UnrealSymbolKind.Macro:     return "\uE943";   // Code icon
                     case UnrealSymbolKind.Interface: return "\uE8A5";
+                    case UnrealSymbolKind.Typedef:   return "\uE8AB";   // Switch/alias icon
+                    case UnrealSymbolKind.Variable:  return "\uE8F1";
                     default:                         return "\uE8A5";
                 }
             }

@@ -35,6 +35,9 @@ namespace PenguinExtention.Services
         // Sorted names for binary-search prefix matching
         private List<string> _sortedNames = new List<string>();
 
+        // Acronym keys → names, kept in step with _sortedNames under the same lock
+        private readonly AcronymIndex _acronyms = new AcronymIndex();
+
         // Class metadata: class name → info
         private readonly ConcurrentDictionary<string, UnrealClassInfo> _classInfo = new ConcurrentDictionary<string, UnrealClassInfo>(StringComparer.OrdinalIgnoreCase);
 
@@ -43,6 +46,13 @@ namespace PenguinExtention.Services
 
         // Id → symbol for O(1) usage tracking (only symbols with a DB id)
         private Dictionary<long, UnrealSymbol> _byId = new Dictionary<long, UnrealSymbol>();
+
+        // Bumped (under write lock) whenever a name is added to or removed from the index.
+        private int _namesVersion;
+        // Bumped (under write lock) whenever any symbol is added, removed or replaced.
+        private int _symbolsVersion;
+        private volatile HashSet<string> _namesSnapshot;
+        private volatile int _namesSnapshotVersion = -1;
 
         /// <summary>Raised when the cache has been hydrated from SQLite and is ready for queries.</summary>
         public event EventHandler CacheReady;
@@ -120,19 +130,26 @@ namespace PenguinExtention.Services
                 foreach (var name in matchingNames)
                     Collect(name);
 
-                // Camel-hump fallback (ponytail: linear scan, only when prefix results are sparse)
+                // Acronym matches ("CMC" → UCharacterMovementComponent) via the sorted acronym index.
+                var acronymHits = new HashSet<string>(StringComparer.Ordinal);
                 if (results.Count < limit && prefix.Length >= 2)
                 {
-                    foreach (var name in _sortedNames)
+                    foreach (var name in _acronyms.Find(prefix, limit * 4))
                     {
                         if (results.Count >= limit * 4) break;
-                        if (IsCamelHumpMatch(prefix, name)) Collect(name);
+                        acronymHits.Add(name);
+                        Collect(name);
                     }
                 }
 
-                // Project symbols first, then by access count descending, then alphabetical
+                // Exact name, then prefix, then acronym hits; then project symbols, usage, alphabetical
                 return results
-                    .OrderBy(s => s.IsEngineSymbol ? 1 : 0)
+                    .OrderBy(s => string.Equals(s.Name, prefix, StringComparison.Ordinal) ? 0
+                        : string.Equals(s.Name, prefix, StringComparison.OrdinalIgnoreCase) ? 1
+                        : s.Name.StartsWith(prefix, StringComparison.Ordinal) ? 2
+                        : s.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? 3
+                        : acronymHits.Contains(s.Name) ? 4 : 5)
+                    .ThenBy(s => s.IsEngineSymbol ? 1 : 0)
                     .ThenByDescending(s => s.AccessCount)
                     .ThenBy(s => s.Name)
                     .Take(limit)
@@ -142,6 +159,40 @@ namespace PenguinExtention.Services
             {
                 _lock.ExitReadLock();
             }
+        }
+
+        /// <summary>
+        /// Visual Assist-style search: prefix and acronym hits from <see cref="Search"/>, plus camel-hump and
+        /// substring matches ("GetActLoc" → GetActorLocation, "cmc" → UCharacterMovementComponent). Best match first.
+        /// </summary>
+        public List<UnrealSymbol> SearchFuzzy(string typed, int limit)
+        {
+            if (string.IsNullOrEmpty(typed) || !IsLoaded) return new List<UnrealSymbol>();
+            var results = Search(typed, null, limit);
+            if (typed.Length < 2 || results.Count >= limit) return results;
+
+            var seen = new HashSet<string>(results.Select(s => s.Name), StringComparer.Ordinal);
+            var extra = new List<(int score, UnrealSymbol symbol)>();
+            _lock.EnterReadLock();
+            try
+            {
+                foreach (var name in _sortedNames)
+                {
+                    if (seen.Contains(name)) continue;
+                    int score = Completion.PenguinMatcher.Score(typed, name);
+                    if (score < 3) continue; // prefix matches already came from Search
+                    if (!_symbolsByName.TryGetValue(name, out var list)) continue;
+                    foreach (var s in list) extra.Add((score, s));
+                }
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+            results.AddRange(extra
+                .OrderBy(e => e.score).ThenBy(e => e.symbol.IsEngineSymbol ? 1 : 0).ThenByDescending(e => e.symbol.AccessCount).ThenBy(e => e.symbol.Name.Length)
+                .Select(e => e.symbol).Take(limit - results.Count));
+            return results;
         }
 
         /// <summary>Exact name lookup.  Returns all symbols with the given name.</summary>
@@ -161,6 +212,122 @@ namespace PenguinExtention.Services
             {
                 _lock.ExitReadLock();
             }
+        }
+
+        /// <summary>
+        /// Case-sensitive snapshot of every indexed symbol name, plus a version that changes whenever the
+        /// name set changes. The snapshot is immutable once returned; callers must not mutate it.
+        /// </summary>
+        public HashSet<string> GetKnownNames(out int version)
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                version = _namesVersion;
+                var cached = _namesSnapshot;
+                if (cached != null && _namesSnapshotVersion == version) return cached;
+
+                var names = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var s in _allSymbols) names.Add(s.Name);
+                // Benign race: two readers may build equal snapshots; last writer wins.
+                _namesSnapshot = names;
+                _namesSnapshotVersion = version;
+                return names;
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+        }
+
+        /// <summary>Coloring categories: 1 = type, 2 = function, 3 = macro, 4 = enum value.</summary>
+        public Dictionary<string, byte> GetNameCategories(out int version)
+        {
+            _lock.EnterReadLock();
+            try
+            {
+                version = _namesVersion;
+                var cached = _categories;
+                if (cached != null && _categoriesVersion == version) return cached;
+                var map = new Dictionary<string, byte>(StringComparer.Ordinal);
+                foreach (var s in _allSymbols)
+                {
+                    byte cat;
+                    switch (s.Kind)
+                    {
+                        case UnrealSymbolKind.Class: case UnrealSymbolKind.Struct: case UnrealSymbolKind.Interface:
+                        case UnrealSymbolKind.Enum: case UnrealSymbolKind.Typedef: case UnrealSymbolKind.Delegate: cat = 1; break;
+                        case UnrealSymbolKind.Function: cat = 2; break;
+                        case UnrealSymbolKind.Macro: cat = 3; break;
+                        case UnrealSymbolKind.EnumValue: cat = 4; break;
+                        default: continue;
+                    }
+                    // Types win over functions (constructors share the class name).
+                    if (!map.TryGetValue(s.Name, out var existing) || cat < existing) map[s.Name] = cat;
+                }
+                _categories = map;
+                _categoriesVersion = version;
+                return map;
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+        }
+
+        private volatile Dictionary<string, byte> _categories;
+        private volatile int _categoriesVersion = -1;
+
+        /// <summary>Members (functions, properties, enum values …) whose OwnerClass is <paramref name="owner"/>.</summary>
+        public List<UnrealSymbol> GetMembers(string owner)
+        {
+            if (string.IsNullOrEmpty(owner) || !IsLoaded) return new List<UnrealSymbol>();
+            _lock.EnterReadLock();
+            try
+            {
+                var map = _members;
+                if (map == null || _membersVersion != _symbolsVersion)
+                {
+                    // Benign race: two readers may build equal maps; last writer wins.
+                    map = new Dictionary<string, List<UnrealSymbol>>(StringComparer.Ordinal);
+                    foreach (var s in _allSymbols)
+                    {
+                        if (string.IsNullOrEmpty(s.OwnerClass)) continue;
+                        if (!map.TryGetValue(s.OwnerClass, out var list)) map[s.OwnerClass] = list = new List<UnrealSymbol>();
+                        list.Add(s);
+                    }
+                    _members = map;
+                    _membersVersion = _symbolsVersion;
+                }
+                return map.TryGetValue(owner, out var found) ? found.ToList() : new List<UnrealSymbol>();
+            }
+            finally
+            {
+                _lock.ExitReadLock();
+            }
+        }
+
+        private volatile Dictionary<string, List<UnrealSymbol>> _members;
+        private volatile int _membersVersion = -1;
+
+        /// <summary>Name-based occurrence candidates recorded by the occurrence pass.</summary>
+        public Task<List<SymbolOccurrence>> GetOccurrencesAsync(string name) => _db.GetOccurrencesAsync(name);
+
+        /// <summary>The backing database (Self-Test row counts).</summary>
+        internal SQLiteCache Database => _db;
+
+        /// <summary>Class/struct symbols whose direct base is <paramref name="className"/>.</summary>
+        public List<UnrealSymbol> GetDerivedClasses(string className)
+        {
+            var derived = new List<UnrealSymbol>();
+            if (string.IsNullOrEmpty(className)) return derived;
+            foreach (var kvp in _classInfo)
+            {
+                if (string.Equals(kvp.Value.BaseClass, className, StringComparison.Ordinal))
+                    derived.AddRange(GetByExactName(kvp.Key).Where(s => s.Kind == UnrealSymbolKind.Class ||
+                        s.Kind == UnrealSymbolKind.Struct || s.Kind == UnrealSymbolKind.Interface));
+            }
+            return derived;
         }
 
         /// <summary>Get class metadata (base class, meta specifiers, inheritance chain).</summary>
@@ -310,6 +477,9 @@ namespace PenguinExtention.Services
             _symbolsByName = dict;
             _byId = byId;
             _sortedNames = dict.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+            _acronyms.Load(_sortedNames);
+            _namesVersion++;
+            _symbolsVersion++;
         }
 
         /// <summary>Incrementally swaps one file's symbols; avoids re-sorting all names. Caller holds write lock.</summary>
@@ -330,6 +500,8 @@ namespace PenguinExtention.Services
                     _symbolsByName.Remove(r.Name);
                     int idx = _sortedNames.BinarySearch(r.Name, StringComparer.OrdinalIgnoreCase);
                     if (idx >= 0) _sortedNames.RemoveAt(idx);
+                    _acronyms.Remove(r.Name);
+                    _namesVersion++;
                 }
             }
 
@@ -342,11 +514,14 @@ namespace PenguinExtention.Services
                     _symbolsByName[a.Name] = list;
                     int idx = _sortedNames.BinarySearch(a.Name, StringComparer.OrdinalIgnoreCase);
                     _sortedNames.Insert(idx < 0 ? ~idx : idx, a.Name);
+                    _acronyms.Add(a.Name);
+                    _namesVersion++;
                 }
                 list.Add(a);
             }
 
             _allSymbols.AddRange(added);
+            _symbolsVersion++;
         }
 
         /// <summary>

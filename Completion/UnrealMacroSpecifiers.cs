@@ -124,10 +124,47 @@ namespace PenguinExtention.Completion
         };
 
         /// <summary>Returns the specifier list for a given macro name, or null if unknown.</summary>
+        // ── meta = ( … ) keys (common, from the public UE metadata-specifier docs) ──
+
+        public static readonly Specifier[] Meta =
+        {
+            new Specifier("DisplayName",          "Name shown in the editor and Blueprint instead of the C++ name.", "DisplayName = \"\""),
+            new Specifier("ToolTip",              "Overrides the tooltip taken from the doc comment.", "ToolTip = \"\""),
+            new Specifier("ClampMin",             "Minimum value the editor allows for a numeric property.", "ClampMin = \"\""),
+            new Specifier("ClampMax",             "Maximum value the editor allows for a numeric property.", "ClampMax = \"\""),
+            new Specifier("UIMin",                "Minimum value of the editor slider.", "UIMin = \"\""),
+            new Specifier("UIMax",                "Maximum value of the editor slider.", "UIMax = \"\""),
+            new Specifier("Units",                "Display unit, e.g. \"cm\", \"s\", \"deg\".", "Units = \"\""),
+            new Specifier("EditCondition",        "Property is editable only when the expression is true.", "EditCondition = \"\""),
+            new Specifier("EditConditionHides",   "Hide (instead of disable) the property when EditCondition is false."),
+            new Specifier("InlineEditConditionToggle", "Bool shown as an inline checkbox next to the property it controls."),
+            new Specifier("AllowPrivateAccess",   "Lets Blueprint access a private/protected C++ property."),
+            new Specifier("ExposeOnSpawn",        "Shows the property as a pin on SpawnActor / Construct Object nodes."),
+            new Specifier("MakeEditWidget",       "Shows a 3D widget for a vector/transform property in the viewport."),
+            new Specifier("BindWidget",           "UMG: bind this property to the widget with the same name."),
+            new Specifier("BindWidgetOptional",   "UMG: like BindWidget, but no compile error when missing."),
+            new Specifier("AllowedClasses",       "Restricts asset pickers to these classes.", "AllowedClasses = \"\""),
+            new Specifier("MustImplement",        "Class pickers only list classes implementing this interface.", "MustImplement = \"\""),
+            new Specifier("TitleProperty",        "Array of structs: property used as each element's title.", "TitleProperty = \"\""),
+            new Specifier("GetOptions",           "Function returning the dropdown options for an FName/FString.", "GetOptions = \"\""),
+            new Specifier("BlueprintProtected",   "Callable only from Blueprints of this class or subclasses."),
+            new Specifier("DefaultToSelf",        "Pin defaults to the calling Blueprint's self.", "DefaultToSelf = \"\""),
+            new Specifier("HidePin",              "Hides the named parameter pin.", "HidePin = \"\""),
+            new Specifier("WorldContext",         "Parameter that receives the world context automatically.", "WorldContext = \"\""),
+            new Specifier("Keywords",             "Extra search keywords for the Blueprint action menu.", "Keywords = \"\""),
+            new Specifier("CompactNodeTitle",     "Show the node in compact form with this title.", "CompactNodeTitle = \"\""),
+            new Specifier("ExpandEnumAsExecs",    "Turns an enum parameter into multiple exec pins.", "ExpandEnumAsExecs = \"\""),
+            new Specifier("DeprecatedFunction",   "Marks a Blueprint function as deprecated."),
+            new Specifier("DeprecationMessage",   "Message shown for deprecated items.", "DeprecationMessage = \"\""),
+            new Specifier("BlueprintSpawnableComponent", "UCLASS: component can be added in the Blueprint editor."),
+            new Specifier("IsBlueprintBase",      "UCLASS: may be used as a Blueprint parent class.", "IsBlueprintBase = \"true\""),
+        };
+
         public static Specifier[] GetSpecifiers(string macroName)
         {
             switch (macroName)
             {
+                case "meta":       return Meta;
                 case "UPROPERTY":  return UProperty;
                 case "UFUNCTION":  return UFunction;
                 case "UCLASS":     return UClass;

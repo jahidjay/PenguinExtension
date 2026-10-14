@@ -60,7 +60,7 @@ namespace PenguinExtention.Commands
         private void Execute(object sender, EventArgs e) => _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
         {
             try { await ExecuteAsync(); }
-            catch (Exception ex) { await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(); ShowStatus("Generation failed: " + ex.Message); }
+            catch (Exception ex) { await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(); PenguinEditor.Fail("Generation failed: " + ex.Message); }
         });
 
         private async Task ExecuteAsync()
@@ -123,6 +123,7 @@ namespace PenguinExtention.Commands
         private void ShowStatus(string msg)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            PenguinExtention.Services.PenguinLog.Info("Command", msg);
             var sb = Package.GetGlobalService(typeof(SVsStatusbar)) as IVsStatusbar;
             sb?.SetText(msg);
         }

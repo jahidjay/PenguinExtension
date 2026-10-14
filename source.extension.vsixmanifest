@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="PenguinExtention.831518ca-a06f-433a-9cfb-15b7a6538550" Version="1.0" Language="en-US" Publisher="Jahid Ahsan Yasin" />
-    <DisplayName>PenguinExtension — Unreal Engine Navigator</DisplayName>
-    <Description>Rider-like Unreal Engine C++ navigation, code suggestions, hover info, and symbol explorer for Visual Studio 2022. Powered by persistent SQLite cache and async background indexing.</Description>
-    <Tags>Unreal Engine, UE5, UE4, C++, navigation, IntelliSense, code completion</Tags>
+    <Identity Id="PenguinExtention.831518ca-a06f-433a-9cfb-15b7a6538550" Version="1.8" Language="en-US" Publisher="Jahid Ahsan Yasin" />
+    <DisplayName>PenguinExtension 🐧 C++ Navigator</DisplayName>
+    <Description>Visual Assist / Rider-style C++ productivity for Unreal Engine and plain C/C++ (SDL2) projects in Visual Studio 2022 and 2026: find symbol, open file, header/source toggle, find references, rename with CoreRedirects, refactorings, signature help, live definition preview, and Unreal coloring. Powered by a persistent SQLite cache and async background indexing.</Description>
+    <Icon>Resources\PenguinIcon.png</Icon>
+    <PreviewImage>Resources\PenguinPreview.png</PreviewImage>
+    <Tags>Unreal Engine, UE5, UE4, SDL2, C++, navigation, refactoring, IntelliSense, code completion</Tags>
   </Metadata>
   <Installation>
-    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 19.0)">
       <ProductArchitecture>amd64</ProductArchitecture>
     </InstallationTarget>
   </Installation>
@@ -15,7 +17,7 @@
     <Dependency Id="Microsoft.Framework.NDP" DisplayName="Microsoft .NET Framework" d:Source="Manual" Version="[4.7.2,)" />
   </Dependencies>
   <Prerequisites>
-    <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,18.0)" DisplayName="Visual Studio core editor" />
+    <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,19.0)" DisplayName="Visual Studio core editor" />
   </Prerequisites>
   <Assets>
     <Asset Type="Microsoft.VisualStudio.VsPackage" d:Source="Project" d:ProjectName="%CurrentProject%" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />

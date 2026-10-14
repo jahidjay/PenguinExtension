@@ -12,7 +12,7 @@ namespace PenguinExtention.UI
     {
         public SymbolInspectorWindow() : base(null)
         {
-            Caption = "Penguin — Symbol Inspector";
+            Caption = "🐧 Penguin — Symbol Inspector";
             Content = new SymbolInspectorControl();
         }
     }

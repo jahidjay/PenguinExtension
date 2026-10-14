@@ -36,8 +36,18 @@ namespace PenguinExtention.QuickInfo
             IAsyncQuickInfoSession session,
             CancellationToken cancellationToken)
         {
-            if (!BackendService.HoverEnabled || !BackendService.IsReady) return null;
+            if (!BackendService.HoverEnabled) return null;
+            FeatureProbe.Mark(Probe);
+            if (!BackendService.IsReady) return null;
+            try { return await GetItemAsync(session, cancellationToken).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return null; }
+            catch (Exception ex) { PenguinLog.Error("Hover", ex); return null; }
+        }
 
+        internal const string Probe = "Hover (QuickInfo)";
+
+        private async Task<QuickInfoItem> GetItemAsync(IAsyncQuickInfoSession session, CancellationToken cancellationToken)
+        {
             await Microsoft.VisualStudio.Shell.ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             // Get the word under the cursor
             var triggerPoint = session.GetTriggerPoint(_textBuffer.CurrentSnapshot);
@@ -69,6 +79,7 @@ namespace PenguinExtention.QuickInfo
             }
             var symbols = await BackendService.ExactAsync(word, cancellationToken).ConfigureAwait(false);
             if (symbols.Count == 0) return null;
+            FeatureProbe.Mark(Probe, "last word: " + word);
 
             // Build tooltip content
             var elements = new List<object>();

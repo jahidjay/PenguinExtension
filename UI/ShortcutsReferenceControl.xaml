@@ -23,10 +23,10 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="Consolas" Text="Ctrl+Shift+U, D" Margin="0,2"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, D" Margin="0,2"/>
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Go To Unreal Definition — Navigate to the source of the symbol under cursor" Margin="4,2" TextWrapping="Wrap"/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" FontFamily="Consolas" Text="Ctrl+Shift+U, E" Margin="0,2"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, E" Margin="0,2"/>
                 <TextBlock Grid.Row="1" Grid.Column="1" Text="Open Unreal Explorer — Browse all indexed Unreal symbols" Margin="4,2" TextWrapping="Wrap"/>
             </Grid>
 
@@ -43,10 +43,10 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="Consolas" Text="Ctrl+Shift+U, I" Margin="0,2"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, I" Margin="0,2"/>
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Generate Implementation — Create .cpp skeleton from .h function declaration" Margin="4,2" TextWrapping="Wrap"/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" FontFamily="Consolas" Text="Ctrl+Shift+U, G" Margin="0,2"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, G" Margin="0,2"/>
                 <TextBlock Grid.Row="1" Grid.Column="1" Text="Generate Getter/Setter — Create Get/Set methods from UPROPERTY" Margin="4,2" TextWrapping="Wrap"/>
             </Grid>
 
@@ -63,12 +63,44 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="Consolas" Text="Ctrl+Shift+U, S" Margin="0,2"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, S" Margin="0,2"/>
                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Symbol Inspector — Live documentation for the symbol under cursor" Margin="4,2" TextWrapping="Wrap"/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" FontFamily="Consolas" Text="Ctrl+Shift+U, K" Margin="0,2"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, K" Margin="0,2"/>
                 <TextBlock Grid.Row="1" Grid.Column="1" Text="Keyboard Shortcuts — This window" Margin="4,2" TextWrapping="Wrap"/>
             </Grid>
+
+            <!-- Visual Assist–style commands (Visual Assist default key in brackets) -->
+            <TextBlock Text="Visual Assist–style Navigation" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"
+                       Foreground="DodgerBlue"/>
+            <StackPanel Margin="8,0,0,12">
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, Y   Find Symbol            [VA: Shift+Alt+S]"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, O   Open File in Project   [VA: Shift+Alt+O]"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, H   Toggle Header/Source   [VA: Alt+O]"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, J   Go To Implementation   [VA: Alt+G]"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, R   Go To Related          [VA: Shift+Alt+G]"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, M   List Methods in File   [VA: Alt+M]"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, F   Find References        [VA: Shift+Alt+F]"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, W   Definition Preview (live declaration + implementation)"/>
+            </StackPanel>
+
+            <TextBlock Text="Visual Assist–style Refactoring" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"
+                       Foreground="DodgerBlue"/>
+            <StackPanel Margin="8,0,0,12">
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, N   Rename (preview + CoreRedirect)  [VA: Shift+Alt+R]"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, A   Add Include"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, C   Create Declaration (from .cpp definition)"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, V   Move Implementation to Source"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, P   Encapsulate Field"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, Q   Document Method"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, T   Insert Snippet / Surround With (C++ + SDL2 snippets)"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, B   Implement Virtual Methods"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, L   Add Missing Case Statements"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, X   Introduce Variable"/>
+                <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, Z   Add Forward Declaration"/>
+                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Opacity="0.75"
+                           Text="To use Visual Assist's own keys, search for the command name (e.g. 'FindSymbol') in Tools › Options › Environment › Keyboard and assign it. Typing '(' after an Unreal function shows its declaration and docs (signature help)."/>
+            </StackPanel>
 
             <!-- Auto-Completion -->
             <TextBlock Text="Auto-Completion" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"

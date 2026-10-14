@@ -23,6 +23,11 @@ Commands/
   GenerateImplementationCommand.cs — Generate .cpp skeleton from .h declaration
   GenerateGetterSetterCommand.cs   — Generate Get/Set from UPROPERTY
   PenguinExtensionCommandIds.cs    — GUID + IDs (sync with .vsct)
+  VisualAssistCommands.cs          — Registers VA-style commands (0x08xx/0x09xx)
+  NavigationCommands.cs            — Find Symbol, Open File, Toggle H/S, GoTo Related/Implementation, List Methods
+  RefactorCommands.cs              — Find References, Rename (+CoreRedirects), Add Include, Create Declaration, etc.
+  PenguinEditor.cs                 — Shared editor helpers; multi-file edits in one linked undo
+Editor/                      — Classifier (UE coloring), reference-highlight tagger, signature help
 Completion/
   UnrealCompletionSource.cs         — IAsyncCompletionSource: symbols + macro specifiers
   UnrealCompletionSourceProvider.cs — MEF factory
@@ -36,6 +41,10 @@ Services/
   UnrealProjectDetector.cs   — Finds .uproject, engine path (registry + options override)
   IncrementalIndexer.cs      — FileSystemWatcher + debounce for live re-indexing
   StartupCacheLoader.cs      — Hydrates CacheService from SQLite at startup
+  OccurrenceScanner.cs       — Linear comment/string-aware identifier scan (references; no regex)
+  AcronymIndex.cs            — Camel-hump/acronym keys (CMC → UCharacterMovementComponent)
+  HeaderSourceResolver.cs    — .h ↔ .cpp incl. Public/Private; module-relative include paths
+  SolutionFileIndex.cs       — Background project file list for Open File
   PenguinOptionsPage.cs      — Tools → Options page
 UI/
   UnrealExplorerWindow.cs          — Symbol Explorer tool window
@@ -43,9 +52,34 @@ UI/
   SymbolInspectorControl.xaml/.cs  — WPF control for inspector
   ShortcutsReferenceWindow.cs      — Keyboard shortcuts reference
   ShortcutsReferenceControl.xaml/.cs — WPF control for shortcuts
+  QuickPickDialog.cs / RenameDialog.cs — code-built WPF dialogs
+  FindReferencesWindow.cs / DefinitionPreviewWindow.cs — tool windows
 ```
 
-## Keyboard Shortcuts (all two-chord: Ctrl+Shift+U, then…)
+## Keyboard Shortcuts (all two-chord: Alt+U, then… — Ctrl+Shift+U also works, but NOT inside the text editor)
+
+Ctrl+Shift+U is `Edit.MakeUppercase` in the Text Editor scope, which beats Global bindings, so the
+Ctrl+Shift+U chords never fire while editing code. Alt+U chords are the primary ones. Visual Assist keys are
+also bound in the Text Editor scope (`guidTextEditorScope`): Alt+O, Alt+G, Alt+M, Shift+Alt+S/O/G/F/R.
+
+**Completion:** both pipelines are implemented. VS 2022 17.14's VC++ uses the *legacy* pipeline
+(`Completion/UnrealLegacyCompletion.cs`, "🐧 Unreal" tab); the user's VS 2026 shows items from the *async*
+`UnrealCompletionSource` in the main list. Both use `Completion/SymbolTooltip.cs` for the tooltip.
+
+**Verifiability:** every feature logs to Output → "PenguinExtension" via `Services/PenguinLog.cs`; editor hooks call
+`FeatureProbe.Mark`. **Penguin Self-Test (Alt+U, U)** prints a checklist (project, index counts, lookups, which hooks VS
+called, key bindings). Command failures use `PenguinEditor.Fail` (logs + shows the pane). Never swallow exceptions silently.
+
+**Typing assistance (v1.6, Unreal):** `Editor/PenguinKeyFilter.cs` is an IOleCommandTarget first in each C/C++ view's
+command chain. It drives the 🐧 suggestion box (`UI/PenguinCompletionPopup.cs`, items from
+`Completion/PenguinCompletionEngine.cs`: specifiers, Owner::/obj-> members, smart true/false/enum/nullptr/overrides,
+`UnrealSnippets`, fuzzy `CacheService.SearchFuzzy` + `PenguinMatcher`) and the parameter info + definition peek box
+(`UI/PenguinParameterInfoPopup.cs`, `Services/DefinitionLookup.cs`). Picking a symbol auto-adds its #include
+(`Services/IncludeInserter.cs`). Create Implementation (Alt+U, I) uses `Services/CodeContext.DeclarationAtCaret`.
+Indexer: `FlattenMacroArguments` handles nested parens in UCLASS/UFUNCTION(meta=(…)); `ExtractClassMembers` indexes
+plain C++ members of reflected classes. Bump `ExtractorVersion` in UnrealIndexer when extraction changes.
+
+**Backend:** the Rust Core backend is frozen — `PenguinOptionsPage.Backend` always returns Legacy.
 
 | Key | Command |
 |-----|---------|
@@ -55,6 +89,14 @@ UI/
 | G   | Generate Getter/Setter |
 | S   | Symbol Inspector |
 | K   | Keyboard Shortcuts |
+| Y / O / H / J / R / M | Find Symbol / Open File / Toggle Header-Source / Go To Implementation / Go To Related / List Methods |
+| F / W | Find References / Definition Preview window |
+| N / A / C / V / P / Q | Rename / Add Include / Create Declaration / Move Implementation / Encapsulate Field / Document Method |
+| T / B / L / X / Z | Snippets & Surround With / Implement Virtual Methods / Add Missing Cases / Introduce Variable / Forward Declaration |
+
+**Two project modes:** Unreal (`.uproject` found) and plain C/C++ (any solution with `.vcxproj`/`.cpp`, e.g. SDL2 games). Plain mode indexes the solution with `Services/CppSymbolExtractor.cs` (general C/C++ declarations) plus library include folders from each `.vcxproj`'s AdditionalIncludeDirectories and the "Extra Include Directories" option. Core (Rust) backend is Unreal-only.
+
+Signature help (declaration + docs) appears when typing `(` after an indexed Unreal function. Command IDs: 0x08xx navigation, 0x09xx refactoring (`Commands/VisualAssistCommands.cs`).
 
 ## Hard Rules
 

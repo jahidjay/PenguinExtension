@@ -78,6 +78,7 @@
     <Compile Include="Models\UnrealSymbolKind.cs" />
     <Compile Include="Models\UnrealClassInfo.cs" />
     <Compile Include="Models\IndexedFile.cs" />
+    <Compile Include="Models\SymbolOccurrence.cs" />
   </ItemGroup>
 
   <!-- Compile items: Database -->
@@ -92,6 +93,22 @@
     <Compile Include="Services\StartupCacheLoader.cs" />
     <Compile Include="Services\UnrealIndexer.cs" />
     <Compile Include="Services\IncrementalIndexer.cs" />
+    <Compile Include="Services\OccurrenceScanner.cs" />
+    <Compile Include="Services\AcronymIndex.cs" />
+    <Compile Include="Services\PenguinLog.cs" />
+    <Compile Include="Services\CodeContext.cs" />
+    <Compile Include="Services\IncludeInserter.cs" />
+    <Compile Include="Services\DefinitionLookup.cs" />
+    <Compile Include="Completion\PenguinMatcher.cs" />
+    <Compile Include="Completion\UnrealSnippets.cs" />
+    <Compile Include="Completion\PenguinCompletionEngine.cs" />
+    <Compile Include="UI\PenguinCompletionPopup.cs" />
+    <Compile Include="UI\PenguinTheme.cs" />
+    <Compile Include="UI\PenguinParameterInfoPopup.cs" />
+    <Compile Include="Editor\PenguinKeyFilter.cs" />
+    <Compile Include="Services\CppSymbolExtractor.cs" />
+    <Compile Include="Services\HeaderSourceResolver.cs" />
+    <Compile Include="Services\SolutionFileIndex.cs" />
     <Compile Include="Services\PenguinOptionsPage.cs" />
   </ItemGroup>
 
@@ -112,6 +129,8 @@
     <Compile Include="Completion\UnrealCompletionSourceProvider.cs" />
     <Compile Include="Completion\UnrealCompletionSource.cs" />
     <Compile Include="Completion\UnrealMacroSpecifiers.cs" />
+    <Compile Include="Completion\UnrealLegacyCompletion.cs" />
+    <Compile Include="Completion\SymbolTooltip.cs" />
   </ItemGroup>
 
   <!-- Compile items: QuickInfo -->
@@ -126,20 +145,34 @@
     <Compile Include="Commands\GenerateImplementationCommand.cs" />
     <Compile Include="Commands\GenerateGetterSetterCommand.cs" />
     <Compile Include="Commands\PenguinExtensionCommandIds.cs" />
+    <Compile Include="Commands\PenguinEditor.cs" />
+    <Compile Include="Commands\NavigationCommands.cs" />
+    <Compile Include="Commands\RefactorCommands.cs" />
+    <Compile Include="Commands\VisualAssistCommands.cs" />
+    <Compile Include="Commands\CodeGenCommands.cs" />
+    <Compile Include="Commands\SelfTestCommand.cs" />
+  </ItemGroup>
+
+  <!-- Compile items: Editor (classification, tagging, signature help) -->
+  <ItemGroup>
+    <Compile Include="Editor\UnrealClassifier.cs" />
+    <Compile Include="Editor\HighlightReferencesTagger.cs" />
+    <Compile Include="Editor\UnrealSignatureHelp.cs" />
   </ItemGroup>
 
   <!-- Compile items: UI (code-behind and ViewModel) -->
   <ItemGroup>
     <Compile Include="UI\UnrealExplorerWindow.cs" />
-    <Compile Include="UI\UnrealExplorerControl.xaml.cs">
-      <DependentUpon>UnrealExplorerControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="UI\UnrealExplorerViewModel.cs" />
+    <Compile Include="UI\PenguinExplorerControl.cs" />
     <Compile Include="UI\SymbolInspectorWindow.cs" />
     <Compile Include="UI\SymbolInspectorControl.xaml.cs">
       <DependentUpon>SymbolInspectorControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="UI\ShortcutsReferenceWindow.cs" />
+    <Compile Include="UI\QuickPickDialog.cs" />
+    <Compile Include="UI\FindReferencesWindow.cs" />
+    <Compile Include="UI\RenameDialog.cs" />
+    <Compile Include="UI\DefinitionPreviewWindow.cs" />
     <Compile Include="UI\ShortcutsReferenceControl.xaml.cs">
       <DependentUpon>ShortcutsReferenceControl.xaml</DependentUpon>
     </Compile>
@@ -147,10 +180,6 @@
 
   <!-- WPF XAML pages -->
   <ItemGroup>
-    <Page Include="UI\UnrealExplorerControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="UI\SymbolInspectorControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -166,6 +195,18 @@
     <VSCTCompile Include="PenguinExtention.vsct">
       <ResourceName>Menus.ctmenu</ResourceName>
     </VSCTCompile>
+  </ItemGroup>
+
+  <!-- Penguin artwork (original, drawn for this project) -->
+  <ItemGroup>
+    <Content Include="Resources\PenguinIcon.png">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Resources\PenguinPreview.png">
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <None Include="Resources\PenguinCommands.png" />
+    <None Include="Resources\Penguin32.png" />
   </ItemGroup>
 
   <!-- VSIX manifest -->

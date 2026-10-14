@@ -46,7 +46,7 @@ namespace PenguinExtention.Commands
         {
             try { await ExecuteAsync(); }
             catch (OperationCanceledException) { }
-            catch (Exception ex) { await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(); ShowStatusMessage(ex.Message); }
+            catch (Exception ex) { await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(); PenguinEditor.Fail(ex.Message); }
         });
 
         private async Task ExecuteAsync()
@@ -142,6 +142,7 @@ namespace PenguinExtention.Commands
         private void ShowStatusMessage(string message)
         {
             ThreadHelper.ThrowIfNotOnUIThread();
+            PenguinExtention.Services.PenguinLog.Info("Command", message);
 
             var statusBar = Package.GetGlobalService(typeof(SVsStatusbar)) as IVsStatusbar;
             statusBar?.SetText(message);

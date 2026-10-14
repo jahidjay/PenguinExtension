@@ -38,12 +38,22 @@ namespace PenguinExtention
                        Orientation = ToolWindowOrientation.Right)]
     [ProvideToolWindow(typeof(ShortcutsReferenceWindow),
                        Style = VsDockStyle.Float)]
+    [ProvideToolWindow(typeof(FindReferencesWindow),
+                       Style = VsDockStyle.Tabbed,
+                       Window = "34E76E81-EE4A-11D0-AE2E-00A0C90FFFC3")] // docks with the Output window
+    [ProvideToolWindow(typeof(DefinitionPreviewWindow),
+                       Style = VsDockStyle.Linked,
+                       Window = ToolWindowGuids.SolutionExplorer,
+                       Orientation = ToolWindowOrientation.Bottom)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(PenguinOptionsPage),
                        "PenguinExtension", "General", 0, 0, true)]
     public sealed class PenguinExtensionPackage : AsyncPackage
     {
         public const string PackageGuidString = "7D9B3C2E-8A4F-4B1D-9E5C-6F0A2D3B8C7E";
+
+        /// <summary>Keep in step with Identity/@Version in source.extension.vsixmanifest.</summary>
+        internal const string Version = "1.8";
 
         private SQLiteCache _db;
         private UnrealIndexer _indexer;
@@ -68,9 +78,13 @@ namespace PenguinExtention
 
             // Register commands on the main thread
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
-            await RegisterCommandsAsync().ConfigureAwait(true);
-
             Instance = this;
+            await RegisterCommandsAsync().ConfigureAwait(true);
+            // Visible proof the extension loaded: Output window (PenguinExtension pane) + status bar.
+            WriteToOutputWindow("🐧 PenguinExtension " + Version + " loaded in Visual Studio " + VsVersion() +
+                " — Alt+U, K lists shortcuts; Tools → Penguin Extension 🐧 → Self-Test checks every feature.");
+            SetStatusBar("🐧 PenguinExtension " + Version + " loaded");
+
             _diagnostics = new CoreDiagnostics(this);
             var solution = await GetServiceAsync(typeof(SVsSolution)) as IVsSolution;
             _solutionEvents = new SolutionEvents(solution, () => RequestRestart());
@@ -80,7 +94,11 @@ namespace PenguinExtention
         }
 
         private void OnSettingsApplied(object sender, EventArgs e) => RequestRestart();
-        private void OnBackendChanged() => SetStatusBar("PenguinExtension: " + BackendService.Status);
+        private void OnBackendChanged()
+        {
+            PenguinLog.Info("Backend", BackendService.Status);
+            SetStatusBar("PenguinExtension: " + BackendService.Status);
+        }
         internal void RequestRestart() => _ = BackendService.ObserveAsync(RestartBackendAsync(DisposalToken));
 
         private async Task RestartBackendAsync(CancellationToken token)
@@ -95,6 +113,7 @@ namespace PenguinExtention
             var engineOverride = options.EngineRootOverride;
             var maxThreads = Math.Max(1, options.MaxIndexingThreads);
             var indexEngine = options.IndexEngineSource;
+            var extraIncludes = options.ExtraIncludeDirectories;
             var config = new CoreConfiguration
             {
                 Executable = string.IsNullOrWhiteSpace(options.CoreExecutableOverride)
@@ -114,13 +133,21 @@ namespace PenguinExtention
                     ct.ThrowIfCancellationRequested();
                     UnrealProjectDetector.CreateInstance();
                     var detector = UnrealProjectDetector.Instance;
-                    await detector.DetectAsync(this, engineOverride).ConfigureAwait(false);
+                    await detector.DetectAsync(this, engineOverride, extraIncludes).ConfigureAwait(false);
                     ct.ThrowIfCancellationRequested();
-                    if (!detector.IsUnrealProject)
+                    if (!detector.IsSupportedProject)
                     {
-                        BackendService.Report("Not an Unreal project. Backend inactive.");
+                        BackendService.Report("No C/C++ project found. Backend inactive.");
                         return;
                     }
+                    if (detector.IsPlainCppProject && mode == PenguinBackend.Core)
+                    {
+                        BackendService.Report("Core backend is Unreal-only. Set Backend = Legacy for plain C/C++ (SDL2) projects.");
+                        return;
+                    }
+                    if (detector.IsPlainCppProject)
+                        WriteToOutputWindow("🐧 Plain C/C++ mode. Library include roots: " +
+                            (detector.ExternalIncludeRoots.Count == 0 ? "(none found)" : string.Join("; ", detector.ExternalIncludeRoots)));
                     config.ProjectRoot = detector.ProjectRoot;
                     config.EngineRoot = indexEngine ? detector.EngineSourceRoot : null;
                     if (mode == PenguinBackend.Core)
@@ -159,19 +186,37 @@ namespace PenguinExtention
                     await TaskScheduler.Default;
                     ct.ThrowIfCancellationRequested();
                     _indexCts = CancellationTokenSource.CreateLinkedTokenSource(requested.Token, token);
-                    _indexer = new UnrealIndexer(_db, cache, maxThreads);
+                    _indexer = new UnrealIndexer(_db, cache, maxThreads)
+                    {
+                        IndexExternalAsCpp = detector.IsPlainCppProject,
+                        ExternalRoots = detector.IsPlainCppProject && indexEngine ? detector.ExternalIncludeRoots : null
+                    };
                     var indexer = _indexer;
                     var indexToken = _indexCts.Token;
+                    PenguinLog.Info("Startup", "project: " + (detector.UProjectFilePath ?? detector.ProjectRoot) +
+                        " | engine source: " + (detector.EngineSourceRoot ?? "(not found)") +
+                        " | cached symbols: " + cache.SymbolCount + " | index engine: " + indexEngine);
                     _indexTask = Task.Run(async () =>
                     {
+                        var watch = Stopwatch.StartNew();
                         try
                         {
+                            var progress = new IndexStatusProgress(this);
                             await indexer.IndexAsync(detector.ProjectSourceRoot, detector.EngineSourceRoot,
-                                indexEngine, null, indexToken).ConfigureAwait(false);
-                            if (!indexToken.IsCancellationRequested) BackendService.Report("Legacy indexing complete");
+                                indexEngine, progress, indexToken).ConfigureAwait(false);
+                            progress.Finish();
+                            PenguinLog.Info("Index", "symbols done: " + progress.Summary + " in " + watch.Elapsed.TotalSeconds.ToString("0.0") + " s");
+                            await indexer.ScanOccurrencesAsync(detector.ProjectSourceRoot, indexToken).ConfigureAwait(false);
+                            if (!indexToken.IsCancellationRequested)
+                            {
+                                BackendService.IndexComplete();
+                                var done = "🐧 indexing complete — " + cache.SymbolCount + " symbols" + (detector.IsPlainCppProject ? " (C/C++ mode)" : " (Unreal mode)");
+                                PenguinLog.Info("Index", done + " (" + watch.Elapsed.TotalSeconds.ToString("0.0") + " s total)");
+                                BackendService.Report(done);
+                            }
                         }
                         catch (OperationCanceledException) { }
-                        catch (Exception ex) { WriteToOutputWindow(ex.Message); }
+                        catch (Exception ex) { PenguinLog.Error("Index", ex); BackendService.Report("Indexing failed: " + ex.Message + " (see Output → PenguinExtension)"); }
                     });
                     _incrementalIndexer = new IncrementalIndexer(indexer, cache);
                     _incrementalIndexer.Start(detector.ProjectSourceRoot);
@@ -197,7 +242,13 @@ namespace PenguinExtention
                 await _incrementalIndexer.StopAsync().ConfigureAwait(false);
                 _incrementalIndexer = null;
             }
-            if (_indexTask != null) { try { await _indexTask.ConfigureAwait(false); } catch { } _indexTask = null; }
+            if (_indexTask != null)
+            {
+                try { await _indexTask.ConfigureAwait(false); }
+                catch (OperationCanceledException) { }
+                catch (Exception ex) { PenguinLog.Error("Index", ex.Message); }
+                _indexTask = null;
+            }
             _indexCts?.Dispose(); _indexCts = null;
             _db?.Dispose(); _db = null;
         }
@@ -209,6 +260,7 @@ namespace PenguinExtention
             var commandService = await GetServiceAsync(typeof(IMenuCommandService)) as OleMenuCommandService;
             if (commandService == null) return;
             CoreCommands.Register(this, commandService);
+            VisualAssistCommands.Register(this, commandService);
 
             // Go To Unreal Definition
             await GoToUnrealDefinitionCommand.InitializeAsync(this).ConfigureAwait(true);
@@ -257,26 +309,55 @@ namespace PenguinExtention
                     var statusBar = GetService(typeof(SVsStatusbar)) as IVsStatusbar;
                     statusBar?.SetText(text);
                 }
-                catch { }
+                catch (Exception ex) { PenguinLog.Error("Status", ex.Message); }
             });
         }
 
-        private void WriteToOutputWindow(string message)
+        private static void WriteToOutputWindow(string message) => PenguinLog.Write(message);
+
+        /// <summary>Running devenv.exe file version, e.g. "18.0.11010.0" (VS 2026) or "17.14.…" (VS 2022).</summary>
+        internal static string VsVersion()
         {
-            _ = JoinableTaskFactory.RunAsync(async () =>
+            try { return FileVersionInfo.GetVersionInfo(Process.GetCurrentProcess().MainModule.FileName).FileVersion; }
+            catch (Exception) { return "(unknown)"; }
+        }
+
+        /// <summary>Shows "🐧 Indexing n/N" with the status-bar progress meter, throttled to ~4 updates/s.</summary>
+        private sealed class IndexStatusProgress : IProgress<IndexProgress>
+        {
+            private readonly PenguinExtensionPackage _package;
+            private long _lastTicks;
+            private uint _cookie;
+            private int _total, _done, _skipped;
+
+            public IndexStatusProgress(PenguinExtensionPackage package) { _package = package; }
+
+            public string Summary => _total + " files (" + (_done) + " re-indexed, " + _skipped + " unchanged)";
+
+            public void Report(IndexProgress value)
             {
-                await JoinableTaskFactory.SwitchToMainThreadAsync();
+                int total, processed, skipped;
+                lock (value) { total = value.TotalFiles; processed = value.ProcessedFiles; skipped = value.SkippedFiles; }
+                _total = total; _done = processed; _skipped = skipped;
+                var now = DateTime.UtcNow.Ticks;
+                if (now - Interlocked.Read(ref _lastTicks) < TimeSpan.TicksPerMillisecond * 250) return;
+                Interlocked.Exchange(ref _lastTicks, now);
+                Update(processed + skipped, total, false);
+            }
+
+            public void Finish() => Update(_total, _total, true);
+
+            private void Update(int current, int total, bool clear) => _ = _package.JoinableTaskFactory.RunAsync(async () =>
+            {
+                await _package.JoinableTaskFactory.SwitchToMainThreadAsync();
                 try
                 {
-                    var outputWindow = GetService(typeof(SVsOutputWindow)) as IVsOutputWindow;
-                    if (outputWindow == null) return;
-
-                    var paneGuid = new Guid("A1B2C3D4-0001-0002-0003-000000000001");
-                    outputWindow.CreatePane(ref paneGuid, "PenguinExtension", 1, 1);
-                    outputWindow.GetPane(ref paneGuid, out IVsOutputWindowPane pane);
-                    pane?.OutputStringThreadSafe($"[{DateTime.Now:HH:mm:ss}] {message}\n");
+                    var bar = _package.GetService(typeof(SVsStatusbar)) as IVsStatusbar;
+                    if (bar == null) return;
+                    if (clear) { bar.Progress(ref _cookie, 0, "", 0, 0); return; }
+                    bar.Progress(ref _cookie, 1, "🐧 Indexing " + current + "/" + total + " files", (uint)current, (uint)Math.Max(1, total));
                 }
-                catch { }
+                catch (Exception ex) { PenguinLog.Error("Index", "status bar: " + ex.Message); }
             });
         }
 

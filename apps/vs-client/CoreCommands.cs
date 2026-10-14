@@ -36,7 +36,7 @@ namespace PenguinExtention.Core
         }
         private static CoreClientService RequireCore()
         {
-            if (!BackendService.IsCore) throw new InvalidOperationException("Select Core in Tools > Options > PenguinExtension to use this command.");
+            if (!BackendService.IsCore) throw new InvalidOperationException("This command needs the Rust Core backend, which is turned off in this version.");
             var core = BackendService.Core;
             if (core?.IsReady != true) throw new InvalidOperationException(BackendService.Status);
             return core;
@@ -45,7 +45,7 @@ namespace PenguinExtention.Core
         {
             if (!BackendService.IsCore)
             {
-                await ShowTextAsync("Penguin Backend Status", BackendService.Status + "\nSelect Core in Tools > Options > PenguinExtension for Core indexing, style diagnostics and AI previews.");
+                await ShowTextAsync("Penguin Backend Status", BackendService.Status + "\nRun Penguin Self-Test (Alt+U, U) for a full check.");
                 return;
             }
             var response = await RequireCore().RequestAsync("penguin/status", new { }, CancellationToken.None).ConfigureAwait(false);

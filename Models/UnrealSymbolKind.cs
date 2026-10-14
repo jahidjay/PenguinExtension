@@ -14,6 +14,9 @@ namespace PenguinExtention.Models
         Property = 5,
         Delegate = 6,
         Macro = 7,
-        Interface = 8
+        Interface = 8,
+        // General C/C++ (non-Unreal) kinds — appended; existing values are persisted.
+        Typedef = 9,
+        Variable = 10
     }
 }

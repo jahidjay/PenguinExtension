@@ -13,7 +13,7 @@ The repository is no longer the C#-only, untested snapshot audited below. **Peng
 | Windows server delivery | Release LSP/MCP executables produced; release and packaged LSP smoke checks passed as listed in the ledger. This is not an IDE acceptance pass. |
 | VS Code | Implemented client; 27 unit tests, strict typecheck and production build passed. Windows-x64 VSIX inspection and extracted-server smoke passed. Live VS Code/Antigravity runtime acceptance is unverified. |
 | Desktop | Implemented Tauri app; 24 frontend and 20 native tests plus recorded build/lint checks passed after source-read hardening. Windows executable and NSIS installer rebuilt with the fix, but installer not installed and GUI acceptance unverified. |
-| Visual Studio | Implemented; 21 bridge/DTO assertions, VS2022/VS18 MSBuild builds, 71-entry VSIX inspection and extracted-server smoke check passed. This does not establish interactive compatibility; the manifest range stays `[17.0, 18.0)`. |
+| Visual Studio | Implemented; 21 bridge/DTO assertions, VS2022/VS18 MSBuild builds, 71-entry VSIX inspection and extracted-server smoke check passed. This does not establish interactive compatibility; the manifest range is now `[17.0, 19.0)` (VS 2022 + VS 2026); interactive acceptance is still pending. |
 | Local AI | Bounded, explicit opt-in preview requests implemented/tested with loopback HTTP mocks only. No live-model pass; the default model was not installed for these checks. |
 | Platform coverage | Only the ledger's measured host checks are established. Cross-platform intent/CI configuration does not verify Linux/macOS/ARM packages or runtime behavior. |
 

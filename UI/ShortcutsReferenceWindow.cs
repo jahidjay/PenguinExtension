@@ -12,7 +12,7 @@ namespace PenguinExtention.UI
     {
         public ShortcutsReferenceWindow() : base(null)
         {
-            Caption = "Penguin — Keyboard Shortcuts";
+            Caption = "🐧 Penguin — Keyboard Shortcuts";
             Content = new ShortcutsReferenceControl();
         }
     }

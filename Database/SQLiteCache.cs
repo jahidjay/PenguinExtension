@@ -12,14 +12,18 @@ namespace PenguinExtention.Database
     /// <summary>
     /// Thin wrapper around a SQLite database that stores the persistent Unreal symbol cache.
     /// Uses WAL journal mode for concurrent read access during background indexing.
-    /// All write operations are serialized through <see cref="_writeLock"/>.
+    /// Every operation opens its own pooled connection (SQLiteConnection is not thread-safe);
+    /// all write operations are additionally serialized through <see cref="_writeLock"/>.
     /// </summary>
     internal sealed class SQLiteCache : IDisposable
     {
+        /// <summary>Bump when the schema changes; migrations run in <see cref="MigrateAsync"/>.</summary>
+        private const int SchemaVersion = 2;
+
         private readonly string _dbPath;
-        private SQLiteConnection _connection;
+        private string _connectionString;
         private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
-        private bool _disposed;
+        private volatile bool _disposed;
 
         public string DatabasePath => _dbPath;
         public bool Exists => File.Exists(_dbPath);
@@ -42,67 +46,137 @@ namespace PenguinExtention.Database
                 JournalMode = SQLiteJournalModeEnum.Wal,
                 SyncMode = SynchronizationModes.Normal,
                 CacheSize = 10000,
-                ForeignKeys = true
+                ForeignKeys = true,
+                Pooling = true
             };
+            _connectionString = csb.ToString();
 
-            _connection = new SQLiteConnection(csb.ToString());
-            await _connection.OpenAsync().ConfigureAwait(false);
-
-            // Additional PRAGMAs for performance
-            await ExecuteNonQueryAsync("PRAGMA temp_store = MEMORY;").ConfigureAwait(false);
-            await CreateSchemaAsync().ConfigureAwait(false);
+            await _writeLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                using (var conn = await OpenAsync().ConfigureAwait(false))
+                {
+                    await ExecuteNonQueryAsync(conn, SchemaV1).ConfigureAwait(false);
+                    await MigrateAsync(conn).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
         }
 
-        private async Task CreateSchemaAsync()
+        private const string SchemaV1 = @"
+            CREATE TABLE IF NOT EXISTS indexed_files (
+                file_path     TEXT    PRIMARY KEY,
+                content_hash  TEXT    NOT NULL,
+                last_indexed  TEXT    NOT NULL,
+                is_engine     INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS symbols (
+                id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                name                 TEXT    NOT NULL,
+                fully_qualified_name TEXT,
+                kind                 INTEGER NOT NULL,
+                file_path            TEXT    NOT NULL,
+                line_number          INTEGER NOT NULL,
+                column_number        INTEGER NOT NULL DEFAULT 0,
+                owner_class          TEXT,
+                signature            TEXT,
+                return_type          TEXT,
+                comment              TEXT,
+                is_engine            INTEGER NOT NULL DEFAULT 0,
+                last_indexed         TEXT    NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS class_info (
+                symbol_id       INTEGER PRIMARY KEY,
+                base_class      TEXT,
+                module          TEXT,
+                meta_specifiers TEXT,
+                is_abstract     INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (symbol_id) REFERENCES symbols(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS symbol_usage (
+                symbol_id     INTEGER PRIMARY KEY,
+                access_count  INTEGER NOT NULL DEFAULT 0,
+                last_accessed TEXT,
+                FOREIGN KEY (symbol_id) REFERENCES symbols(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_symbols_name      ON symbols(name);
+            CREATE INDEX IF NOT EXISTS idx_symbols_kind       ON symbols(kind);
+            CREATE INDEX IF NOT EXISTS idx_symbols_owner      ON symbols(owner_class);
+            CREATE INDEX IF NOT EXISTS idx_symbols_file       ON symbols(file_path);
+            CREATE INDEX IF NOT EXISTS idx_symbols_name_kind  ON symbols(name, kind);
+        ";
+
+        // v2: name-based occurrence index used by Find References / Rename / highlight.
+        private const string SchemaV2 = @"
+            CREATE TABLE IF NOT EXISTS occurrences (
+                symbol_name  TEXT    NOT NULL,
+                file_path    TEXT    NOT NULL,
+                line_number  INTEGER NOT NULL,
+                column_number INTEGER NOT NULL,
+                context      INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_occ_name ON occurrences(symbol_name);
+            CREATE INDEX IF NOT EXISTS idx_occ_file ON occurrences(file_path);
+
+            -- scan_key = content hash + known-name-set fingerprint; unchanged key means no rescan needed.
+            CREATE TABLE IF NOT EXISTS occurrence_files (
+                file_path TEXT PRIMARY KEY,
+                scan_key  TEXT NOT NULL
+            );
+        ";
+
+        private static async Task MigrateAsync(SQLiteConnection conn)
         {
-            const string schema = @"
-                CREATE TABLE IF NOT EXISTS indexed_files (
-                    file_path     TEXT    PRIMARY KEY,
-                    content_hash  TEXT    NOT NULL,
-                    last_indexed  TEXT    NOT NULL,
-                    is_engine     INTEGER NOT NULL DEFAULT 0
-                );
+            long version;
+            using (var cmd = new SQLiteCommand("PRAGMA user_version;", conn))
+                version = Convert.ToInt64(await cmd.ExecuteScalarAsync().ConfigureAwait(false));
 
-                CREATE TABLE IF NOT EXISTS symbols (
-                    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name                 TEXT    NOT NULL,
-                    fully_qualified_name TEXT,
-                    kind                 INTEGER NOT NULL,
-                    file_path            TEXT    NOT NULL,
-                    line_number          INTEGER NOT NULL,
-                    column_number        INTEGER NOT NULL DEFAULT 0,
-                    owner_class          TEXT,
-                    signature            TEXT,
-                    return_type          TEXT,
-                    comment              TEXT,
-                    is_engine            INTEGER NOT NULL DEFAULT 0,
-                    last_indexed         TEXT    NOT NULL
-                );
+            if (version >= SchemaVersion) return;
+            if (version < 2)
+            {
+                await ExecuteNonQueryAsync(conn, SchemaV2).ConfigureAwait(false);
+            }
+            await ExecuteNonQueryAsync(conn, "PRAGMA user_version = " + SchemaVersion + ";").ConfigureAwait(false);
+        }
 
-                CREATE TABLE IF NOT EXISTS class_info (
-                    symbol_id       INTEGER PRIMARY KEY,
-                    base_class      TEXT,
-                    module          TEXT,
-                    meta_specifiers TEXT,
-                    is_abstract     INTEGER NOT NULL DEFAULT 0,
-                    FOREIGN KEY (symbol_id) REFERENCES symbols(id) ON DELETE CASCADE
-                );
+        private async Task<SQLiteConnection> OpenAsync()
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(SQLiteCache));
+            if (_connectionString == null) throw new InvalidOperationException("SQLiteCache is not initialized.");
+            var conn = new SQLiteConnection(_connectionString);
+            try
+            {
+                await conn.OpenAsync().ConfigureAwait(false);
+                using (var cmd = new SQLiteCommand("PRAGMA temp_store = MEMORY;", conn))
+                    await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                return conn;
+            }
+            catch
+            {
+                conn.Dispose();
+                throw;
+            }
+        }
 
-                CREATE TABLE IF NOT EXISTS symbol_usage (
-                    symbol_id     INTEGER PRIMARY KEY,
-                    access_count  INTEGER NOT NULL DEFAULT 0,
-                    last_accessed TEXT,
-                    FOREIGN KEY (symbol_id) REFERENCES symbols(id) ON DELETE CASCADE
-                );
-
-                CREATE INDEX IF NOT EXISTS idx_symbols_name      ON symbols(name);
-                CREATE INDEX IF NOT EXISTS idx_symbols_kind       ON symbols(kind);
-                CREATE INDEX IF NOT EXISTS idx_symbols_owner      ON symbols(owner_class);
-                CREATE INDEX IF NOT EXISTS idx_symbols_file       ON symbols(file_path);
-                CREATE INDEX IF NOT EXISTS idx_symbols_name_kind  ON symbols(name, kind);
-            ";
-
-            await ExecuteNonQueryAsync(schema).ConfigureAwait(false);
+        private async Task WriteAsync(Func<SQLiteConnection, Task> action)
+        {
+            await _writeLock.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                using (var conn = await OpenAsync().ConfigureAwait(false))
+                    await action(conn).ConfigureAwait(false);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
         }
 
         // ── Bulk reads (startup) ────────────────────────────────────
@@ -110,26 +184,15 @@ namespace PenguinExtention.Database
         /// <summary>
         /// Reads every symbol row into memory.  Called once at startup for fast cache hydration.
         /// </summary>
-        public async Task<List<UnrealSymbol>> LoadAllSymbolsAsync()
+        public Task<List<UnrealSymbol>> LoadAllSymbolsAsync()
         {
-            var symbols = new List<UnrealSymbol>(200_000);
-
             const string sql = @"
                 SELECT s.*, COALESCE(u.access_count, 0) AS access_count
                 FROM symbols s
                 LEFT JOIN symbol_usage u ON u.symbol_id = s.id
                 ORDER BY s.name";
 
-            using (var cmd = new SQLiteCommand(sql, _connection))
-            using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
-            {
-                while (await reader.ReadAsync().ConfigureAwait(false))
-                {
-                    symbols.Add(ReadSymbol((SQLiteDataReader)reader));
-                }
-            }
-
-            return symbols;
+            return ReadSymbolsAsync(sql, null, 200_000);
         }
 
         /// <summary>Reads all class_info rows.</summary>
@@ -143,19 +206,24 @@ namespace PenguinExtention.Database
                 JOIN symbols s ON s.id = ci.symbol_id
                 ORDER BY s.name";
 
-            using (var cmd = new SQLiteCommand(sql, _connection))
+            using (var conn = await OpenAsync().ConfigureAwait(false))
+            using (var cmd = new SQLiteCommand(sql, conn))
             using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
             {
+                int oId = reader.GetOrdinal("symbol_id"), oName = reader.GetOrdinal("class_name"),
+                    oBase = reader.GetOrdinal("base_class"), oMod = reader.GetOrdinal("module"),
+                    oMeta = reader.GetOrdinal("meta_specifiers"), oAbs = reader.GetOrdinal("is_abstract");
+
                 while (await reader.ReadAsync().ConfigureAwait(false))
                 {
                     infos.Add(new UnrealClassInfo
                     {
-                        SymbolId = reader.GetInt64(reader.GetOrdinal("symbol_id")),
-                        ClassName = reader.GetString(reader.GetOrdinal("class_name")),
-                        BaseClass = reader.IsDBNull(reader.GetOrdinal("base_class")) ? null : reader.GetString(reader.GetOrdinal("base_class")),
-                        Module = reader.IsDBNull(reader.GetOrdinal("module")) ? null : reader.GetString(reader.GetOrdinal("module")),
-                        MetaSpecifiers = reader.IsDBNull(reader.GetOrdinal("meta_specifiers")) ? null : reader.GetString(reader.GetOrdinal("meta_specifiers")),
-                        IsAbstract = reader.GetInt32(reader.GetOrdinal("is_abstract")) != 0
+                        SymbolId = reader.GetInt64(oId),
+                        ClassName = reader.GetString(oName),
+                        BaseClass = reader.IsDBNull(oBase) ? null : reader.GetString(oBase),
+                        Module = reader.IsDBNull(oMod) ? null : reader.GetString(oMod),
+                        MetaSpecifiers = reader.IsDBNull(oMeta) ? null : reader.GetString(oMeta),
+                        IsAbstract = reader.GetInt32(oAbs) != 0
                     });
                 }
             }
@@ -166,9 +234,8 @@ namespace PenguinExtention.Database
         // ── Querying ────────────────────────────────────────────────
 
         /// <summary>Prefix search with optional kind filter.  Used as a fallback when the in-memory cache is not yet loaded.</summary>
-        public async Task<List<UnrealSymbol>> SearchSymbolsAsync(string prefix, UnrealSymbolKind? kind = null, int limit = 50)
+        public Task<List<UnrealSymbol>> SearchSymbolsAsync(string prefix, UnrealSymbolKind? kind = null, int limit = 50)
         {
-            var results = new List<UnrealSymbol>();
             var sql = "SELECT s.*, COALESCE(u.access_count, 0) AS access_count FROM symbols s LEFT JOIN symbol_usage u ON u.symbol_id = s.id WHERE s.name LIKE @prefix";
 
             if (kind.HasValue)
@@ -176,49 +243,25 @@ namespace PenguinExtention.Database
 
             sql += " ORDER BY COALESCE(u.access_count, 0) DESC, s.name LIMIT @limit";
 
-            using (var cmd = new SQLiteCommand(sql, _connection))
+            return ReadSymbolsAsync(sql, cmd =>
             {
                 cmd.Parameters.AddWithValue("@prefix", prefix + "%");
                 if (kind.HasValue)
                     cmd.Parameters.AddWithValue("@kind", (int)kind.Value);
                 cmd.Parameters.AddWithValue("@limit", limit);
-
-                using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        results.Add(ReadSymbol((SQLiteDataReader)reader));
-                    }
-                }
-            }
-
-            return results;
+            });
         }
 
         /// <summary>Exact name lookup.</summary>
-        public async Task<List<UnrealSymbol>> GetSymbolsByNameAsync(string name)
+        public Task<List<UnrealSymbol>> GetSymbolsByNameAsync(string name)
         {
-            var results = new List<UnrealSymbol>();
-
             const string sql = @"
                 SELECT s.*, COALESCE(u.access_count, 0) AS access_count
                 FROM symbols s
                 LEFT JOIN symbol_usage u ON u.symbol_id = s.id
                 WHERE s.name = @name";
 
-            using (var cmd = new SQLiteCommand(sql, _connection))
-            {
-                cmd.Parameters.AddWithValue("@name", name);
-                using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
-                {
-                    while (await reader.ReadAsync().ConfigureAwait(false))
-                    {
-                        results.Add(ReadSymbol((SQLiteDataReader)reader));
-                    }
-                }
-            }
-
-            return results;
+            return ReadSymbolsAsync(sql, cmd => cmd.Parameters.AddWithValue("@name", name));
         }
 
         // ── Indexed-file tracking ───────────────────────────────────
@@ -227,7 +270,8 @@ namespace PenguinExtention.Database
         {
             const string sql = "SELECT * FROM indexed_files WHERE file_path = @path";
 
-            using (var cmd = new SQLiteCommand(sql, _connection))
+            using (var conn = await OpenAsync().ConfigureAwait(false))
+            using (var cmd = new SQLiteCommand(sql, conn))
             {
                 cmd.Parameters.AddWithValue("@path", filePath);
                 using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
@@ -248,16 +292,15 @@ namespace PenguinExtention.Database
             return null;
         }
 
-        public async Task UpsertIndexedFileAsync(IndexedFile file)
+        public Task UpsertIndexedFileAsync(IndexedFile file)
         {
             const string sql = @"
                 INSERT OR REPLACE INTO indexed_files (file_path, content_hash, last_indexed, is_engine)
                 VALUES (@path, @hash, @indexed, @engine)";
 
-            await _writeLock.WaitAsync().ConfigureAwait(false);
-            try
+            return WriteAsync(async conn =>
             {
-                using (var cmd = new SQLiteCommand(sql, _connection))
+                using (var cmd = new SQLiteCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@path", file.FilePath);
                     cmd.Parameters.AddWithValue("@hash", file.ContentHash);
@@ -265,11 +308,7 @@ namespace PenguinExtention.Database
                     cmd.Parameters.AddWithValue("@engine", file.IsEngineFile ? 1 : 0);
                     await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
-            }
-            finally
-            {
-                _writeLock.Release();
-            }
+            });
         }
 
         // ── Symbol writes (indexing) ────────────────────────────────
@@ -282,17 +321,16 @@ namespace PenguinExtention.Database
         {
             if (symbols == null || symbols.Count == 0) return 0;
 
-            await _writeLock.WaitAsync().ConfigureAwait(false);
-            try
+            await WriteAsync(conn =>
             {
-                using (var txn = _connection.BeginTransaction())
+                using (var txn = conn.BeginTransaction())
                 {
                     const string sql = @"
                         INSERT INTO symbols (name, fully_qualified_name, kind, file_path, line_number, column_number,
                                             owner_class, signature, return_type, comment, is_engine, last_indexed)
                         VALUES (@name, @fqn, @kind, @file, @line, @col, @owner, @sig, @ret, @cmt, @eng, @idx)";
 
-                    using (var cmd = new SQLiteCommand(sql, _connection))
+                    using (var cmd = new SQLiteCommand(sql, conn))
                     {
                         cmd.Transaction = txn;
 
@@ -331,30 +369,26 @@ namespace PenguinExtention.Database
 
                     txn.Commit();
                 }
+                return Task.CompletedTask;
+            }).ConfigureAwait(false);
 
-                return symbols.Count;
-            }
-            finally
-            {
-                _writeLock.Release();
-            }
+            return symbols.Count;
         }
 
         /// <summary>Batch upsert class_info rows.</summary>
-        public async Task UpsertClassInfoBatchAsync(IReadOnlyList<UnrealClassInfo> infos)
+        public Task UpsertClassInfoBatchAsync(IReadOnlyList<UnrealClassInfo> infos)
         {
-            if (infos == null || infos.Count == 0) return;
+            if (infos == null || infos.Count == 0) return Task.CompletedTask;
 
-            await _writeLock.WaitAsync().ConfigureAwait(false);
-            try
+            return WriteAsync(conn =>
             {
-                using (var txn = _connection.BeginTransaction())
+                using (var txn = conn.BeginTransaction())
                 {
                     const string sql = @"
                         INSERT OR REPLACE INTO class_info (symbol_id, base_class, module, meta_specifiers, is_abstract)
                         VALUES (@sid, @base, @mod, @meta, @abs)";
 
-                    using (var cmd = new SQLiteCommand(sql, _connection))
+                    using (var cmd = new SQLiteCommand(sql, conn))
                     {
                         cmd.Transaction = txn;
 
@@ -378,54 +412,132 @@ namespace PenguinExtention.Database
 
                     txn.Commit();
                 }
-            }
-            finally
-            {
-                _writeLock.Release();
-            }
+                return Task.CompletedTask;
+            });
         }
 
         /// <summary>Removes all symbols that belong to a given source file. Called before re-indexing a file.</summary>
-        public async Task DeleteSymbolsByFileAsync(string filePath)
+        public Task DeleteSymbolsByFileAsync(string filePath) =>
+            ExecuteWriteAsync("DELETE FROM symbols WHERE file_path = @path", filePath);
+
+        /// <summary>Removes the indexed_files entry and occurrences for a deleted file.</summary>
+        public Task DeleteIndexedFileAsync(string filePath) =>
+            ExecuteWriteAsync(@"DELETE FROM indexed_files WHERE file_path = @path;
+                                DELETE FROM occurrences WHERE file_path = @path;
+                                DELETE FROM occurrence_files WHERE file_path = @path;", filePath);
+
+        /// <summary>Every file path the cache knows about (symbols, tracked files, occurrences).</summary>
+        public async Task<List<string>> GetAllFilePathsAsync()
         {
-            await _writeLock.WaitAsync().ConfigureAwait(false);
-            try
+            var paths = new List<string>();
+            const string sql = @"SELECT file_path FROM indexed_files UNION SELECT DISTINCT file_path FROM symbols
+                                 UNION SELECT DISTINCT file_path FROM occurrences";
+            using (var conn = await OpenAsync().ConfigureAwait(false))
+            using (var cmd = new SQLiteCommand(sql, conn))
+            using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
+                while (await reader.ReadAsync().ConfigureAwait(false))
+                    paths.Add(reader.GetString(0));
+            return paths;
+        }
+
+        // ── Occurrences (Find References / Rename) ──────────────────
+
+        /// <summary>The scan key stored by the last occurrence scan of <paramref name="filePath"/>, or null.</summary>
+        public async Task<string> GetOccurrenceScanKeyAsync(string filePath)
+        {
+            using (var conn = await OpenAsync().ConfigureAwait(false))
+            using (var cmd = new SQLiteCommand("SELECT scan_key FROM occurrence_files WHERE file_path = @path", conn))
             {
-                const string sql = "DELETE FROM symbols WHERE file_path = @path";
-                using (var cmd = new SQLiteCommand(sql, _connection))
-                {
-                    cmd.Parameters.AddWithValue("@path", filePath);
-                    await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
-                }
-            }
-            finally
-            {
-                _writeLock.Release();
+                cmd.Parameters.AddWithValue("@path", filePath);
+                return await cmd.ExecuteScalarAsync().ConfigureAwait(false) as string;
             }
         }
 
-        /// <summary>Removes the indexed_files entry for a deleted file.</summary>
-        public async Task DeleteIndexedFileAsync(string filePath)
+        /// <summary>Atomically replaces every occurrence recorded for <paramref name="filePath"/> and stores its scan key.</summary>
+        public Task ReplaceOccurrencesForFileAsync(string filePath, IReadOnlyList<SymbolOccurrence> occurrences, string scanKey)
         {
-            await _writeLock.WaitAsync().ConfigureAwait(false);
-            try
+            return WriteAsync(conn =>
             {
-                const string sql = "DELETE FROM indexed_files WHERE file_path = @path";
-                using (var cmd = new SQLiteCommand(sql, _connection))
+                using (var txn = conn.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@path", filePath);
-                    await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                    using (var del = new SQLiteCommand(
+                        "DELETE FROM occurrences WHERE file_path = @path; " +
+                        "INSERT OR REPLACE INTO occurrence_files (file_path, scan_key) VALUES (@path, @key);", conn))
+                    {
+                        del.Transaction = txn;
+                        del.Parameters.AddWithValue("@path", filePath);
+                        del.Parameters.AddWithValue("@key", scanKey);
+                        del.ExecuteNonQuery();
+                    }
+
+                    if (occurrences != null && occurrences.Count > 0)
+                    {
+                        const string sql = @"
+                            INSERT INTO occurrences (symbol_name, file_path, line_number, column_number, context)
+                            VALUES (@name, @path, @line, @col, @ctx)";
+                        using (var cmd = new SQLiteCommand(sql, conn))
+                        {
+                            cmd.Transaction = txn;
+                            var pName = cmd.Parameters.Add("@name", DbType.String);
+                            var pPath = cmd.Parameters.Add("@path", DbType.String);
+                            var pLine = cmd.Parameters.Add("@line", DbType.Int32);
+                            var pCol  = cmd.Parameters.Add("@col",  DbType.Int32);
+                            var pCtx  = cmd.Parameters.Add("@ctx",  DbType.Int32);
+                            pPath.Value = filePath;
+
+                            foreach (var o in occurrences)
+                            {
+                                pName.Value = o.SymbolName;
+                                pLine.Value = o.LineNumber;
+                                pCol.Value  = o.ColumnNumber;
+                                pCtx.Value  = (int)o.Context;
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
+                    }
+
+                    txn.Commit();
+                }
+                return Task.CompletedTask;
+            });
+        }
+
+        /// <summary>All recorded occurrences of an identifier, ordered by file and position.</summary>
+        public async Task<List<SymbolOccurrence>> GetOccurrencesAsync(string symbolName, int limit = 5000)
+        {
+            var results = new List<SymbolOccurrence>();
+            const string sql = @"
+                SELECT symbol_name, file_path, line_number, column_number, context
+                FROM occurrences WHERE symbol_name = @name
+                ORDER BY file_path, line_number, column_number LIMIT @limit";
+
+            using (var conn = await OpenAsync().ConfigureAwait(false))
+            using (var cmd = new SQLiteCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@name", symbolName);
+                cmd.Parameters.AddWithValue("@limit", limit);
+                using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
+                {
+                    while (await reader.ReadAsync().ConfigureAwait(false))
+                    {
+                        results.Add(new SymbolOccurrence
+                        {
+                            SymbolName = reader.GetString(0),
+                            FilePath = reader.GetString(1),
+                            LineNumber = reader.GetInt32(2),
+                            ColumnNumber = reader.GetInt32(3),
+                            Context = (OccurrenceContext)reader.GetInt32(4)
+                        });
+                    }
                 }
             }
-            finally
-            {
-                _writeLock.Release();
-            }
+
+            return results;
         }
 
         // ── Usage tracking ──────────────────────────────────────────
 
-        public async Task IncrementUsageAsync(long symbolId)
+        public Task IncrementUsageAsync(long symbolId)
         {
             const string sql = @"
                 INSERT INTO symbol_usage (symbol_id, access_count, last_accessed)
@@ -434,27 +546,28 @@ namespace PenguinExtention.Database
                     access_count = access_count + 1,
                     last_accessed = @now";
 
-            await _writeLock.WaitAsync().ConfigureAwait(false);
-            try
+            return WriteAsync(async conn =>
             {
-                using (var cmd = new SQLiteCommand(sql, _connection))
+                using (var cmd = new SQLiteCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@id", symbolId);
                     cmd.Parameters.AddWithValue("@now", DateTime.UtcNow.ToString("o"));
                     await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
-            }
-            finally
-            {
-                _writeLock.Release();
-            }
+            });
         }
 
         /// <summary>Returns the total number of symbols in the database.</summary>
-        public async Task<long> GetSymbolCountAsync()
+        public Task<long> GetSymbolCountAsync() => CountAsync("SELECT COUNT(*) FROM symbols");
+
+        /// <summary>Row counts for the Self-Test: indexed files and recorded occurrences.</summary>
+        public Task<long> GetIndexedFileCountAsync() => CountAsync("SELECT COUNT(*) FROM indexed_files");
+        public Task<long> GetOccurrenceCountAsync() => CountAsync("SELECT COUNT(*) FROM occurrences");
+
+        private async Task<long> CountAsync(string sql)
         {
-            const string sql = "SELECT COUNT(*) FROM symbols";
-            using (var cmd = new SQLiteCommand(sql, _connection))
+            using (var conn = await OpenAsync().ConfigureAwait(false))
+            using (var cmd = new SQLiteCommand(sql, conn))
             {
                 var result = await cmd.ExecuteScalarAsync().ConfigureAwait(false);
                 return Convert.ToInt64(result);
@@ -463,31 +576,71 @@ namespace PenguinExtention.Database
 
         // ── Helpers ─────────────────────────────────────────────────
 
-        private static UnrealSymbol ReadSymbol(SQLiteDataReader reader)
+        private async Task<List<UnrealSymbol>> ReadSymbolsAsync(string sql, Action<SQLiteCommand> bind, int capacity = 16)
+        {
+            var results = new List<UnrealSymbol>(capacity);
+            using (var conn = await OpenAsync().ConfigureAwait(false))
+            using (var cmd = new SQLiteCommand(sql, conn))
+            {
+                bind?.Invoke(cmd);
+                using (var reader = (SQLiteDataReader)await cmd.ExecuteReaderAsync().ConfigureAwait(false))
+                {
+                    var ordinals = new SymbolOrdinals(reader);
+                    while (await reader.ReadAsync().ConfigureAwait(false))
+                        results.Add(ReadSymbol(reader, ordinals));
+                }
+            }
+            return results;
+        }
+
+        /// <summary>Column ordinals resolved once per reader instead of per row.</summary>
+        private sealed class SymbolOrdinals
+        {
+            public readonly int Id, Name, Fqn, Kind, File, Line, Col, Owner, Sig, Ret, Cmt, Eng, Idx, Access;
+
+            public SymbolOrdinals(SQLiteDataReader r)
+            {
+                Id = r.GetOrdinal("id"); Name = r.GetOrdinal("name"); Fqn = r.GetOrdinal("fully_qualified_name");
+                Kind = r.GetOrdinal("kind"); File = r.GetOrdinal("file_path"); Line = r.GetOrdinal("line_number");
+                Col = r.GetOrdinal("column_number"); Owner = r.GetOrdinal("owner_class"); Sig = r.GetOrdinal("signature");
+                Ret = r.GetOrdinal("return_type"); Cmt = r.GetOrdinal("comment"); Eng = r.GetOrdinal("is_engine");
+                Idx = r.GetOrdinal("last_indexed"); Access = r.GetOrdinal("access_count");
+            }
+        }
+
+        private static UnrealSymbol ReadSymbol(SQLiteDataReader reader, SymbolOrdinals o)
         {
             return new UnrealSymbol
             {
-                Id                 = reader.GetInt64(reader.GetOrdinal("id")),
-                Name               = reader.GetString(reader.GetOrdinal("name")),
-                FullyQualifiedName = reader.IsDBNull(reader.GetOrdinal("fully_qualified_name")) ? null : reader.GetString(reader.GetOrdinal("fully_qualified_name")),
-                Kind               = (UnrealSymbolKind)reader.GetInt32(reader.GetOrdinal("kind")),
-                FilePath           = reader.GetString(reader.GetOrdinal("file_path")),
-                LineNumber         = reader.GetInt32(reader.GetOrdinal("line_number")),
-                ColumnNumber       = reader.GetInt32(reader.GetOrdinal("column_number")),
-                OwnerClass         = reader.IsDBNull(reader.GetOrdinal("owner_class")) ? null : reader.GetString(reader.GetOrdinal("owner_class")),
-                Signature          = reader.IsDBNull(reader.GetOrdinal("signature")) ? null : reader.GetString(reader.GetOrdinal("signature")),
-                ReturnType         = reader.IsDBNull(reader.GetOrdinal("return_type")) ? null : reader.GetString(reader.GetOrdinal("return_type")),
-                Comment            = reader.IsDBNull(reader.GetOrdinal("comment")) ? null : reader.GetString(reader.GetOrdinal("comment")),
-                IsEngineSymbol     = reader.GetInt32(reader.GetOrdinal("is_engine")) != 0,
-                LastIndexed        = DateTime.Parse(reader.GetString(reader.GetOrdinal("last_indexed"))),
-                AccessCount        = reader.GetOrdinal("access_count") >= 0 && !reader.IsDBNull(reader.GetOrdinal("access_count"))
-                                        ? reader.GetInt32(reader.GetOrdinal("access_count")) : 0
+                Id                 = reader.GetInt64(o.Id),
+                Name               = reader.GetString(o.Name),
+                FullyQualifiedName = reader.IsDBNull(o.Fqn) ? null : reader.GetString(o.Fqn),
+                Kind               = (UnrealSymbolKind)reader.GetInt32(o.Kind),
+                FilePath           = reader.GetString(o.File),
+                LineNumber         = reader.GetInt32(o.Line),
+                ColumnNumber       = reader.GetInt32(o.Col),
+                OwnerClass         = reader.IsDBNull(o.Owner) ? null : reader.GetString(o.Owner),
+                Signature          = reader.IsDBNull(o.Sig) ? null : reader.GetString(o.Sig),
+                ReturnType         = reader.IsDBNull(o.Ret) ? null : reader.GetString(o.Ret),
+                Comment            = reader.IsDBNull(o.Cmt) ? null : reader.GetString(o.Cmt),
+                IsEngineSymbol     = reader.GetInt32(o.Eng) != 0,
+                LastIndexed        = DateTime.Parse(reader.GetString(o.Idx)),
+                AccessCount        = reader.IsDBNull(o.Access) ? 0 : reader.GetInt32(o.Access)
             };
         }
 
-        private async Task ExecuteNonQueryAsync(string sql)
+        private Task ExecuteWriteAsync(string sql, string path) => WriteAsync(async conn =>
         {
-            using (var cmd = new SQLiteCommand(sql, _connection))
+            using (var cmd = new SQLiteCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@path", path);
+                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            }
+        });
+
+        private static async Task ExecuteNonQueryAsync(SQLiteConnection conn, string sql)
+        {
+            using (var cmd = new SQLiteCommand(sql, conn))
             {
                 await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
             }
@@ -500,9 +653,11 @@ namespace PenguinExtention.Database
             if (_disposed) return;
             _disposed = true;
 
-            _connection?.Close();
-            _connection?.Dispose();
-            _writeLock?.Dispose();
+            // Wait for an in-flight write so its connection isn't torn down mid-transaction.
+            if (_writeLock.Wait(TimeSpan.FromSeconds(5)))
+                _writeLock.Release();
+            if (_connectionString != null)
+                SQLiteConnection.ClearAllPools();
         }
     }
 }

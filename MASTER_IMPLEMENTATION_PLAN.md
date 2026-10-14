@@ -13,7 +13,7 @@ PenguinCore has progressed from the proposed rewrite to **implemented and tested
 | LSP and MCP | Implemented/tested; protocol adapters, live LSP overlays, disk-backed MCP queries and jobs. The headless ledger records 268 passing tests (including 11 LSP and 11 MCP subprocess tests), lint/format checks and Windows release binaries. |
 | VS Code client | Implemented/tested: 27 unit tests and recorded typecheck/build/package checks passed. Windows-x64 VSIX and extracted-server smoke test verified; live VS Code/Antigravity acceptance remains open. |
 | Tauri desktop | Implemented/tested: 24 frontend and 20 native tests passed after source-read hardening, with recorded build/lint checks. Windows executable and NSIS installer rebuilt with the fix, not installed; GUI acceptance remains open. |
-| Visual Studio bridge | Implemented; 21 bridge/DTO assertions, VS2022/VS18 MSBuild builds, 71-entry VSIX inspection and extracted-server smoke check passed. Interactive IDE behavior remains unverified; supported installation range stays `[17.0, 18.0)`. |
+| Visual Studio bridge | Implemented; 21 bridge/DTO assertions, VS2022/VS18 MSBuild builds, 71-entry VSIX inspection and extracted-server smoke check passed. Interactive IDE behavior remains unverified; installation range widened to `[17.0, 19.0)` (VS 2022 + VS 2026); interactive acceptance in each IDE is still pending. |
 | Platform/release acceptance | Unverified beyond the exact host checks in the ledger. Linux/macOS/ARM native execution, interactive IDE/GUI behavior, live-model use and broader packaging acceptance require separate evidence. |
 
 ### Remaining work, not a new scaffolding phase
