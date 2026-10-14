@@ -535,33 +535,6 @@ namespace PenguinExtention.Services
             _symbolsVersion++;
         }
 
-        /// <summary>
-        /// Camel-hump match: first char matches, then each pattern char must hit an uppercase/underscore-start
-        /// hump or continue the previous match. E.g. "AMyC" matches "AMyCharacter", "BP" matches "BeginPlay".
-        /// </summary>
-        private static bool IsCamelHumpMatch(string pattern, string name)
-        {
-            return HumpMatch(pattern, 0, name, 0, false);
-        }
-
-        private static bool HumpMatch(string p, int pi, string n, int ni, bool prevMatched)
-        {
-            if (pi == p.Length) return true;
-            for (; ni < n.Length; ni++)
-            {
-                if (char.ToLowerInvariant(p[pi]) != char.ToLowerInvariant(n[ni])) { if (pi == 0) return false; prevMatched = false; continue; }
-                bool isHump = ni == 0 || char.IsUpper(n[ni]) || n[ni - 1] == '_';
-                bool contiguous = prevMatched && ni > 0;
-                if (pi == 0 ? ni == 0 : (isHump || contiguous))
-                {
-                    if (HumpMatch(p, pi + 1, n, ni + 1, true)) return true;
-                }
-                if (pi == 0) return false;
-                prevMatched = false;
-            }
-            return false;
-        }
-
         /// <summary>Binary search for all names starting with <paramref name="prefix"/>.</summary>
         private IEnumerable<string> FindNamesByPrefix(string prefix)
         {

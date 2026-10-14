@@ -37,10 +37,5 @@ namespace PenguinExtention.Services
             sw.Stop();
             return sw.Elapsed;
         }
-
-        /// <summary>
-        /// Returns true if a cache database already exists on disk (i.e. this isn't a first run).
-        /// </summary>
-        public bool HasExistingCache => _db.Exists;
     }
 }

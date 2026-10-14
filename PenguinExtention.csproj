@@ -205,7 +205,6 @@
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
     <None Include="Resources\PenguinCommands.png" />
-    <None Include="Resources\Penguin32.png" />
   </ItemGroup>
 
   <!-- VSIX manifest -->

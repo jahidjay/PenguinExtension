@@ -128,17 +128,6 @@ namespace PenguinExtention.Commands
             (view as Microsoft.VisualStudio.Text.Editor.IWpfTextView)?.VisualElement.Focus();
         }
 
-        private static string GetBufferFilePath(IVsTextLines buffer)
-        {
-            ThreadHelper.ThrowIfNotOnUIThread();
-            if (buffer is IPersistFileFormat pff)
-            {
-                pff.GetCurFile(out string path, out _);
-                return path;
-            }
-            return null;
-        }
-
         private void ShowStatus(string msg)
         {
             ThreadHelper.ThrowIfNotOnUIThread();

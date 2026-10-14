@@ -74,16 +74,6 @@ namespace PenguinExtention.Services
             @"DECLARE_(?:DYNAMIC_(?:MULTICAST_)?)?DELEGATE\w*\s*\(\s*(\w+)",
             RegexOptions.Compiled);
 
-        // Simple class/struct detection (non-UCLASS) for navigation support
-        private static readonly Regex RxPlainClass = new Regex(
-            @"^(?:class|struct)\s+(?:\w+_API\s+)?(\w+)\s*(?:final\s*)?(?::\s*public\s+(\w+))?",
-            RegexOptions.Compiled | RegexOptions.Multiline);
-
-        // Doc-comment extractor (/** ... */ or /// preceding a line)
-        private static readonly Regex RxDocComment = new Regex(
-            @"/\*\*\s*(.*?)\*/|///\s*(.*?)$",
-            RegexOptions.Compiled | RegexOptions.Singleline | RegexOptions.Multiline);
-
         // ── Constructor ─────────────────────────────────────────────
 
         public UnrealIndexer(SQLiteCache db, CacheService cache, int maxParallelism)

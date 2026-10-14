@@ -25,8 +25,6 @@ namespace PenguinExtention.Database
         private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
         private volatile bool _disposed;
 
-        public string DatabasePath => _dbPath;
-        public bool Exists => File.Exists(_dbPath);
 
         public SQLiteCache(string solutionDirectory)
         {
@@ -232,25 +230,6 @@ namespace PenguinExtention.Database
         }
 
         // ── Querying ────────────────────────────────────────────────
-
-        /// <summary>Prefix search with optional kind filter.  Used as a fallback when the in-memory cache is not yet loaded.</summary>
-        public Task<List<UnrealSymbol>> SearchSymbolsAsync(string prefix, UnrealSymbolKind? kind = null, int limit = 50)
-        {
-            var sql = "SELECT s.*, COALESCE(u.access_count, 0) AS access_count FROM symbols s LEFT JOIN symbol_usage u ON u.symbol_id = s.id WHERE s.name LIKE @prefix";
-
-            if (kind.HasValue)
-                sql += " AND s.kind = @kind";
-
-            sql += " ORDER BY COALESCE(u.access_count, 0) DESC, s.name LIMIT @limit";
-
-            return ReadSymbolsAsync(sql, cmd =>
-            {
-                cmd.Parameters.AddWithValue("@prefix", prefix + "%");
-                if (kind.HasValue)
-                    cmd.Parameters.AddWithValue("@kind", (int)kind.Value);
-                cmd.Parameters.AddWithValue("@limit", limit);
-            });
-        }
 
         /// <summary>Exact name lookup.</summary>
         public Task<List<UnrealSymbol>> GetSymbolsByNameAsync(string name)
@@ -558,7 +537,6 @@ namespace PenguinExtention.Database
         }
 
         /// <summary>Returns the total number of symbols in the database.</summary>
-        public Task<long> GetSymbolCountAsync() => CountAsync("SELECT COUNT(*) FROM symbols");
 
         /// <summary>Row counts for the Self-Test: indexed files and recorded occurrences.</summary>
         public Task<long> GetIndexedFileCountAsync() => CountAsync("SELECT COUNT(*) FROM indexed_files");
