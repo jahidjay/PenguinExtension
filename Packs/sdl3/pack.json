@@ -1,0 +1,9 @@
+{
+  "id": "sdl3",
+  "name": "SDL 3",
+  "version": "1.0.0",
+  "description": "Simple DirectMedia Layer 3. Claims project include folders that contain SDL3/SDL.h and adds SDL3 snippets.",
+  "languages": ["cpp"],
+  "detect": { "includeHeaders": ["SDL3/SDL.h"] },
+  "snippets": "snippets.json"
+}

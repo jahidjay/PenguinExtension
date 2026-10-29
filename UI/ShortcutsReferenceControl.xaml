@@ -62,7 +62,15 @@
                     <RowDefinition/>
                     <RowDefinition/>
                     <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
                 </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, Shift+P" Margin="0,2"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="Penguin Packs — Turn Unreal/Unity/SDL3/imported packs on or off; import packs and libraries" Margin="4,2" TextWrapping="Wrap"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, Shift+M" Margin="0,2"/>
+                <TextBlock Grid.Row="4" Grid.Column="1" Text="Penguin MCP — Connect to Unity/Unreal/any MCP server and call its tools" Margin="4,2" TextWrapping="Wrap"/>
 
                 <TextBlock Grid.Row="2" Grid.Column="0" FontFamily="Consolas" Text="Alt+U, Shift+T" Margin="0,2"/>
                 <TextBlock Grid.Row="2" Grid.Column="1" Text="Penguin Color Theme — Choose colors for keywords, classes, functions, enums, UE macros…" Margin="4,2" TextWrapping="Wrap"/>

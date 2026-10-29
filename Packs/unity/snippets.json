@@ -1,0 +1,134 @@
+{
+  "snippets": [
+    {
+      "keyword": "SerializeField",
+      "text": "[SerializeField] private float $0speed = 5f;",
+      "description": "Private field shown in the Inspector"
+    },
+    {
+      "keyword": "SerializeFieldRef",
+      "text": "[SerializeField] private Transform $0target;",
+      "description": "Private object reference shown in the Inspector"
+    },
+    {
+      "keyword": "Header",
+      "text": "[Header(\"$0\")]",
+      "description": "Bold header above the next Inspector field"
+    },
+    {
+      "keyword": "Tooltip",
+      "text": "[Tooltip(\"$0\")]",
+      "description": "Inspector tooltip for the next field"
+    },
+    {
+      "keyword": "Range",
+      "text": "[Range($00f, 1f)]",
+      "description": "Slider in the Inspector"
+    },
+    {
+      "keyword": "Space",
+      "text": "[Space]",
+      "description": "Empty space in the Inspector"
+    },
+    {
+      "keyword": "TextArea",
+      "text": "[TextArea(3, 10)] public string $0text;",
+      "description": "Multi-line string field"
+    },
+    {
+      "keyword": "RequireComponent",
+      "text": "[RequireComponent(typeof($0))]",
+      "description": "Adds the required component automatically"
+    },
+    {
+      "keyword": "DisallowMultipleComponent",
+      "text": "[DisallowMultipleComponent]",
+      "description": "Only one of this component per GameObject"
+    },
+    {
+      "keyword": "ExecuteAlways",
+      "text": "[ExecuteAlways]",
+      "description": "Run Update/OnEnable in Edit mode too"
+    },
+    {
+      "keyword": "AddComponentMenu",
+      "text": "[AddComponentMenu(\"$0\")]",
+      "description": "Place the component in the Add Component menu"
+    },
+    {
+      "keyword": "CreateAssetMenu",
+      "text": "[CreateAssetMenu(fileName = \"$CLASS\", menuName = \"$0\")]",
+      "description": "Create this ScriptableObject from Assets \u2192 Create"
+    },
+    {
+      "keyword": "ContextMenu",
+      "text": "[ContextMenu(\"$0\")]\nprivate void RunFromInspector()\n{\n}",
+      "description": "Inspector context-menu command"
+    },
+    {
+      "keyword": "MenuItem",
+      "text": "[MenuItem(\"Tools/$0\")]\nprivate static void RunMenuItem()\n{\n}",
+      "description": "Editor menu command (put it in an Editor folder or #if UNITY_EDITOR)"
+    },
+    {
+      "keyword": "RuntimeInitializeOnLoadMethod",
+      "text": "[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]\nprivate static void Initialize()\n{\n    $0\n}",
+      "description": "Static method run once when the game starts"
+    },
+    {
+      "keyword": "singleton",
+      "text": "public static $CLASS Instance { get; private set; }\n\nprivate void Awake()\n{\n    if (Instance != null && Instance != this)\n    {\n        Destroy(gameObject);\n        return;\n    }\n    Instance = this;\n    DontDestroyOnLoad(gameObject);$0\n}",
+      "description": "MonoBehaviour singleton that survives scene loads"
+    },
+    {
+      "keyword": "coroutine",
+      "text": "private IEnumerator $0Routine()\n{\n    yield return null;\n}",
+      "description": "Coroutine method (start it with StartCoroutine)"
+    },
+    {
+      "keyword": "StartCoroutine",
+      "text": "StartCoroutine($0());",
+      "description": "Start a coroutine"
+    },
+    {
+      "keyword": "WaitForSeconds",
+      "text": "yield return new WaitForSeconds($01f);",
+      "description": "Wait inside a coroutine"
+    },
+    {
+      "keyword": "GetComponent",
+      "text": "var $0component = GetComponent<>();",
+      "description": "Get a component on this GameObject"
+    },
+    {
+      "keyword": "TryGetComponent",
+      "text": "if (TryGetComponent(out $0Rigidbody body))\n{\n}",
+      "description": "Get a component without allocating when missing"
+    },
+    {
+      "keyword": "CompareTag",
+      "text": "if (other.CompareTag(\"$0\"))\n{\n}",
+      "description": "Tag check without allocations"
+    },
+    {
+      "keyword": "Raycast",
+      "text": "if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, 100f))\n{\n    $0\n}",
+      "description": "3D raycast forward"
+    },
+    {
+      "keyword": "Instantiate",
+      "text": "Instantiate($0prefab, transform.position, Quaternion.identity);",
+      "description": "Spawn a prefab"
+    },
+    {
+      "keyword": "DebugLog",
+      "text": "Debug.Log($\"$0\");",
+      "description": "Log to the Unity Console"
+    },
+    {
+      "keyword": "UNITY_EDITOR",
+      "text": "#if UNITY_EDITOR\n$0\n#endif",
+      "description": "Editor-only code"
+    }
+  ]
+}

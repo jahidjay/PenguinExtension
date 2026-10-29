@@ -49,6 +49,9 @@ namespace PenguinExtention.Models
         /// <summary>True if this symbol lives under the Engine source tree.</summary>
         public bool IsEngineSymbol { get; set; }
 
+        /// <summary>Pack this symbol came from ("unreal", "sdl3", "external"…); null for the solution's own code.</summary>
+        public string PackId { get; set; }
+
         /// <summary>UTC timestamp of the last indexing pass that touched this symbol.</summary>
         public DateTime LastIndexed { get; set; }
 

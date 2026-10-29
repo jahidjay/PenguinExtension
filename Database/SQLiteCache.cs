@@ -18,7 +18,7 @@ namespace PenguinExtention.Database
     internal sealed class SQLiteCache : IDisposable
     {
         /// <summary>Bump when the schema changes; migrations run in <see cref="MigrateAsync"/>.</summary>
-        private const int SchemaVersion = 2;
+        private const int SchemaVersion = 3;
 
         private readonly string _dbPath;
         private string _connectionString;
@@ -130,6 +130,13 @@ namespace PenguinExtention.Database
             );
         ";
 
+        // v3: which pack (unreal, sdl3, external…) a file/symbol came from; NULL = the solution's own code.
+        private const string SchemaV3 = @"
+            ALTER TABLE indexed_files ADD COLUMN pack_id TEXT;
+            ALTER TABLE symbols ADD COLUMN pack_id TEXT;
+            CREATE INDEX IF NOT EXISTS idx_files_pack ON indexed_files(pack_id);
+        ";
+
         private static async Task MigrateAsync(SQLiteConnection conn)
         {
             long version;
@@ -140,6 +147,10 @@ namespace PenguinExtention.Database
             if (version < 2)
             {
                 await ExecuteNonQueryAsync(conn, SchemaV2).ConfigureAwait(false);
+            }
+            if (version < 3)
+            {
+                await ExecuteNonQueryAsync(conn, SchemaV3).ConfigureAwait(false);
             }
             await ExecuteNonQueryAsync(conn, "PRAGMA user_version = " + SchemaVersion + ";").ConfigureAwait(false);
         }
@@ -262,7 +273,8 @@ namespace PenguinExtention.Database
                             FilePath = reader.GetString(reader.GetOrdinal("file_path")),
                             ContentHash = reader.GetString(reader.GetOrdinal("content_hash")),
                             LastIndexed = DateTime.Parse(reader.GetString(reader.GetOrdinal("last_indexed"))),
-                            IsEngineFile = reader.GetInt32(reader.GetOrdinal("is_engine")) != 0
+                            IsEngineFile = reader.GetInt32(reader.GetOrdinal("is_engine")) != 0,
+                            PackId = reader.IsDBNull(reader.GetOrdinal("pack_id")) ? null : reader.GetString(reader.GetOrdinal("pack_id"))
                         };
                     }
                 }
@@ -274,8 +286,8 @@ namespace PenguinExtention.Database
         public Task UpsertIndexedFileAsync(IndexedFile file)
         {
             const string sql = @"
-                INSERT OR REPLACE INTO indexed_files (file_path, content_hash, last_indexed, is_engine)
-                VALUES (@path, @hash, @indexed, @engine)";
+                INSERT OR REPLACE INTO indexed_files (file_path, content_hash, last_indexed, is_engine, pack_id)
+                VALUES (@path, @hash, @indexed, @engine, @pack)";
 
             return WriteAsync(async conn =>
             {
@@ -285,6 +297,7 @@ namespace PenguinExtention.Database
                     cmd.Parameters.AddWithValue("@hash", file.ContentHash);
                     cmd.Parameters.AddWithValue("@indexed", file.LastIndexed.ToString("o"));
                     cmd.Parameters.AddWithValue("@engine", file.IsEngineFile ? 1 : 0);
+                    cmd.Parameters.AddWithValue("@pack", (object)file.PackId ?? DBNull.Value);
                     await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
                 }
             });
@@ -306,8 +319,8 @@ namespace PenguinExtention.Database
                 {
                     const string sql = @"
                         INSERT INTO symbols (name, fully_qualified_name, kind, file_path, line_number, column_number,
-                                            owner_class, signature, return_type, comment, is_engine, last_indexed)
-                        VALUES (@name, @fqn, @kind, @file, @line, @col, @owner, @sig, @ret, @cmt, @eng, @idx)";
+                                            owner_class, signature, return_type, comment, is_engine, last_indexed, pack_id)
+                        VALUES (@name, @fqn, @kind, @file, @line, @col, @owner, @sig, @ret, @cmt, @eng, @idx, @pack)";
 
                     using (var cmd = new SQLiteCommand(sql, conn))
                     {
@@ -326,6 +339,7 @@ namespace PenguinExtention.Database
                         var pCmt  = cmd.Parameters.Add("@cmt",  DbType.String);
                         var pEng  = cmd.Parameters.Add("@eng",  DbType.Int32);
                         var pIdx  = cmd.Parameters.Add("@idx",  DbType.String);
+                        var pPack = cmd.Parameters.Add("@pack", DbType.String);
 
                         foreach (var s in symbols)
                         {
@@ -341,6 +355,7 @@ namespace PenguinExtention.Database
                             pCmt.Value  = (object)s.Comment ?? DBNull.Value;
                             pEng.Value  = s.IsEngineSymbol ? 1 : 0;
                             pIdx.Value  = s.LastIndexed.ToString("o");
+                            pPack.Value = (object)s.PackId ?? DBNull.Value;
 
                             cmd.ExecuteNonQuery();
                         }
@@ -396,6 +411,32 @@ namespace PenguinExtention.Database
         }
 
         /// <summary>Removes all symbols that belong to a given source file. Called before re-indexing a file.</summary>
+        /// <summary>Files tagged with one of <paramref name="packIds"/> (used to unload unchecked packs).</summary>
+        public async Task<List<string>> GetFilesOfPacksAsync(ICollection<string> packIds)
+        {
+            var result = new List<string>();
+            if (packIds == null || packIds.Count == 0) return result;
+            using (var conn = await OpenAsync().ConfigureAwait(false))
+            using (var cmd = new SQLiteCommand("SELECT file_path, pack_id FROM indexed_files WHERE pack_id IS NOT NULL", conn))
+            using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
+                while (await reader.ReadAsync().ConfigureAwait(false))
+                    if (packIds.Contains(reader.GetString(1))) result.Add(reader.GetString(0));
+            return result;
+        }
+
+        /// <summary>Re-tags an unchanged file (and its symbols) with a new pack id without re-parsing it.</summary>
+        public Task SetFilePackAsync(string filePath, string packId) => WriteAsync(async conn =>
+        {
+            using (var cmd = new SQLiteCommand(
+                "UPDATE indexed_files SET pack_id = @pack WHERE file_path = @path; " +
+                "UPDATE symbols SET pack_id = @pack WHERE file_path = @path;", conn))
+            {
+                cmd.Parameters.AddWithValue("@path", filePath);
+                cmd.Parameters.AddWithValue("@pack", (object)packId ?? DBNull.Value);
+                await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+            }
+        });
+
         public Task DeleteSymbolsByFileAsync(string filePath) =>
             ExecuteWriteAsync("DELETE FROM symbols WHERE file_path = @path", filePath);
 
@@ -574,7 +615,7 @@ namespace PenguinExtention.Database
         /// <summary>Column ordinals resolved once per reader instead of per row.</summary>
         private sealed class SymbolOrdinals
         {
-            public readonly int Id, Name, Fqn, Kind, File, Line, Col, Owner, Sig, Ret, Cmt, Eng, Idx, Access;
+            public readonly int Id, Name, Fqn, Kind, File, Line, Col, Owner, Sig, Ret, Cmt, Eng, Idx, Access, Pack;
 
             public SymbolOrdinals(SQLiteDataReader r)
             {
@@ -582,7 +623,7 @@ namespace PenguinExtention.Database
                 Kind = r.GetOrdinal("kind"); File = r.GetOrdinal("file_path"); Line = r.GetOrdinal("line_number");
                 Col = r.GetOrdinal("column_number"); Owner = r.GetOrdinal("owner_class"); Sig = r.GetOrdinal("signature");
                 Ret = r.GetOrdinal("return_type"); Cmt = r.GetOrdinal("comment"); Eng = r.GetOrdinal("is_engine");
-                Idx = r.GetOrdinal("last_indexed"); Access = r.GetOrdinal("access_count");
+                Idx = r.GetOrdinal("last_indexed"); Access = r.GetOrdinal("access_count"); Pack = r.GetOrdinal("pack_id");
             }
         }
 
@@ -602,6 +643,7 @@ namespace PenguinExtention.Database
                 ReturnType         = reader.IsDBNull(o.Ret) ? null : reader.GetString(o.Ret),
                 Comment            = reader.IsDBNull(o.Cmt) ? null : reader.GetString(o.Cmt),
                 IsEngineSymbol     = reader.GetInt32(o.Eng) != 0,
+                PackId             = reader.IsDBNull(o.Pack) ? null : reader.GetString(o.Pack),
                 LastIndexed        = DateTime.Parse(reader.GetString(o.Idx)),
                 AccessCount        = reader.IsDBNull(o.Access) ? 0 : reader.GetInt32(o.Access)
             };

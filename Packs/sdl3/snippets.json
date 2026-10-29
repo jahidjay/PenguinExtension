@@ -1,0 +1,103 @@
+{
+  "snippets": [
+    {
+      "keyword": "SDL_Init",
+      "text": "SDL_Init(SDL_INIT_VIDEO)",
+      "description": "Initialize SDL subsystems (returns false on failure; see SDL_GetError).",
+      "caretBack": 1
+    },
+    {
+      "keyword": "SDL_Init",
+      "text": "if (!SDL_Init(SDL_INIT_VIDEO)) { SDL_Log(\"SDL_Init failed: %s\", SDL_GetError()); return 1; }",
+      "description": "Initialize video and bail out with the error message."
+    },
+    {
+      "keyword": "SDL_CreateWindow",
+      "text": "SDL_Window* window = SDL_CreateWindow(\"\", 1280, 720, SDL_WINDOW_RESIZABLE);",
+      "description": "Create a window (SDL3: title, width, height, flags).",
+      "caretBack": 36
+    },
+    {
+      "keyword": "SDL_CreateRenderer",
+      "text": "SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);",
+      "description": "Create a 2D renderer with the default driver."
+    },
+    {
+      "keyword": "SDL_CreateWindowAndRenderer",
+      "text": "SDL_CreateWindowAndRenderer(\"\", 1280, 720, SDL_WINDOW_RESIZABLE, &window, &renderer);",
+      "description": "Create a window and renderer in one call.",
+      "caretBack": 56
+    },
+    {
+      "keyword": "SDL_PollEvent",
+      "text": "SDL_Event event; while (SDL_PollEvent(&event)) { if (event.type == SDL_EVENT_QUIT) running = false; }",
+      "description": "Event loop: drain all pending events."
+    },
+    {
+      "keyword": "SDL_SetRenderDrawColor",
+      "text": "SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);",
+      "description": "Set the draw color (RGBA 0-255)."
+    },
+    {
+      "keyword": "SDL_RenderClear",
+      "text": "SDL_RenderClear(renderer);",
+      "description": "Clear the target with the draw color."
+    },
+    {
+      "keyword": "SDL_RenderPresent",
+      "text": "SDL_RenderPresent(renderer);",
+      "description": "Show what was rendered this frame."
+    },
+    {
+      "keyword": "SDL_RenderFillRect",
+      "text": "SDL_FRect rect = { 0.0f, 0.0f, 32.0f, 32.0f }; SDL_RenderFillRect(renderer, &rect);",
+      "description": "Fill a rectangle (SDL3 uses float SDL_FRect)."
+    },
+    {
+      "keyword": "SDL_Log",
+      "text": "SDL_Log(\"\");",
+      "description": "Log a message (printf-style).",
+      "caretBack": 3
+    },
+    {
+      "keyword": "SDL_GetError",
+      "text": "SDL_Log(\"Error: %s\", SDL_GetError());",
+      "description": "Log the last SDL error."
+    },
+    {
+      "keyword": "SDL_GetTicks",
+      "text": "Uint64 now = SDL_GetTicks();",
+      "description": "Milliseconds since SDL_Init."
+    },
+    {
+      "keyword": "SDL_Quit",
+      "text": "SDL_DestroyRenderer(renderer); SDL_DestroyWindow(window); SDL_Quit();",
+      "description": "Clean up the renderer and window, then shut SDL down."
+    },
+    {
+      "keyword": "SDL_MAIN_USE_CALLBACKS",
+      "text": "#define SDL_MAIN_USE_CALLBACKS 1",
+      "description": "Use SDL3 main callbacks (define before #include <SDL3/SDL_main.h>)."
+    },
+    {
+      "keyword": "SDL_AppInit",
+      "text": "SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])",
+      "description": "SDL3 main-callbacks entry point: runs once at startup."
+    },
+    {
+      "keyword": "SDL_AppIterate",
+      "text": "SDL_AppResult SDL_AppIterate(void* appstate)",
+      "description": "SDL3 main callback: runs once per frame."
+    },
+    {
+      "keyword": "SDL_AppEvent",
+      "text": "SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)",
+      "description": "SDL3 main callback: runs for each event."
+    },
+    {
+      "keyword": "SDL_AppQuit",
+      "text": "void SDL_AppQuit(void* appstate, SDL_AppResult result)",
+      "description": "SDL3 main callback: runs once at shutdown."
+    }
+  ]
+}

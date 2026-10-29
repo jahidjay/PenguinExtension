@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.Design;
+using System.Linq;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -42,6 +43,13 @@ namespace PenguinExtention
                        Style = VsDockStyle.Linked,
                        Window = ToolWindowGuids.SolutionExplorer,
                        Orientation = ToolWindowOrientation.Right)]
+    [ProvideToolWindow(typeof(PacksWindow),
+                       Style = VsDockStyle.Linked,
+                       Window = ToolWindowGuids.SolutionExplorer,
+                       Orientation = ToolWindowOrientation.Right)]
+    [ProvideToolWindow(typeof(McpWindow),
+                       Style = VsDockStyle.Tabbed,
+                       Window = ToolWindowGuids.Outputwindow)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(PenguinOptionsPage),
                        "PenguinExtension", "General", 0, 0, true)]
@@ -52,7 +60,7 @@ namespace PenguinExtention
         public const string PackageGuidString = "7D9B3C2E-8A4F-4B1D-9E5C-6F0A2D3B8C7E";
 
         /// <summary>Keep in step with Identity/@Version in source.extension.vsixmanifest.</summary>
-        internal const string Version = "1.11";
+        internal const string Version = "1.12";
 
         private SQLiteCache _db;
         private UnrealIndexer _indexer;
@@ -65,6 +73,7 @@ namespace PenguinExtention
         private SolutionEvents _solutionEvents;
         private readonly SemaphoreSlim _lifecycle = new SemaphoreSlim(1, 1);
         private CancellationTokenSource _workspaceCts;
+        private string _mcpSolution;
         internal static PenguinExtensionPackage Instance { get; private set; }
 
         // ── Package initialization ──────────────────────────────────
@@ -89,6 +98,7 @@ namespace PenguinExtention
             var solution = await GetServiceAsync(typeof(SVsSolution)) as IVsSolution;
             _solutionEvents = new SolutionEvents(solution, () => RequestRestart());
             PenguinOptionsPage.SettingsApplied += OnSettingsApplied;
+            PackService.Changed += RequestRestart;
             BackendService.Changed += OnBackendChanged;
             await RestartBackendAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -109,11 +119,13 @@ namespace PenguinExtention
             _workspaceCts = requested;
             var options = (PenguinOptionsPage)GetDialogPage(typeof(PenguinOptionsPage));
             BackendService.Reset(options);
+            Completion.CSharpPackCompletionSource.OfferCallbacks = options.UnityMessageCompletion;
             var mode = options.Backend;
             var engineOverride = options.EngineRootOverride;
             var maxThreads = Math.Max(1, options.MaxIndexingThreads);
             var indexEngine = options.IndexEngineSource;
             var extraIncludes = options.ExtraIncludeDirectories;
+            var unityOverride = options.UnityEditorOverride;
             var config = new CoreConfiguration
             {
                 Executable = string.IsNullOrWhiteSpace(options.CoreExecutableOverride)
@@ -133,8 +145,25 @@ namespace PenguinExtention
                     ct.ThrowIfCancellationRequested();
                     UnrealProjectDetector.CreateInstance();
                     var detector = UnrealProjectDetector.Instance;
-                    await detector.DetectAsync(this, engineOverride, extraIncludes).ConfigureAwait(false);
+                    await detector.DetectAsync(this, engineOverride, extraIncludes, unityOverride).ConfigureAwait(false);
+                    if (!string.Equals(detector.SolutionDirectory, _mcpSolution, StringComparison.OrdinalIgnoreCase))
+                    {
+                        McpHub.DisposeAll(); // MCP connections belong to the previous solution (pack toggles keep them)
+                        _mcpSolution = detector.SolutionDirectory;
+                    }
                     ct.ThrowIfCancellationRequested();
+                    PackService.Load(detector);
+                    if (detector.IsUnityProject)
+                    {
+                        // C# IntelliSense is Visual Studio's; Penguin adds pack snippets, Unity message stubs and hover docs.
+                        var editor = detector.UnityEditorPath == null ? "not found (set Tools → Options → PenguinExtension → Unity Editor Override)"
+                            : detector.UnityEditorPath + (detector.UnityEditorExact ? "" : " (closest match, not " + detector.UnityVersion + ")");
+                        WriteToOutputWindow("🐧 Unity mode — project " + detector.ProjectRoot + ", Unity " + (detector.UnityVersion ?? "(version unknown)") +
+                            ", editor " + editor + ". Packs: " + string.Join(", ", PackService.Packs.Where(p => p.Enabled).Select(p => p.Id)) +
+                            ". MCP: Alt+U, Shift+M.");
+                        BackendService.Report("Unity mode (" + (detector.UnityVersion ?? "unknown version") + ")");
+                        return;
+                    }
                     if (!detector.IsSupportedProject)
                     {
                         BackendService.Report("No C/C++ project found. Backend inactive.");
@@ -186,10 +215,13 @@ namespace PenguinExtention
                     await TaskScheduler.Default;
                     ct.ThrowIfCancellationRequested();
                     _indexCts = CancellationTokenSource.CreateLinkedTokenSource(requested.Token, token);
+                    // Engine source belongs to the unreal pack: unchecking the pack also skips (and unloads) it.
+                    var indexEngineSource = indexEngine && (!detector.IsUnrealProject || PackService.IsEnabled(PackService.EnginePackId));
                     _indexer = new UnrealIndexer(_db, cache, maxThreads)
                     {
                         IndexExternalAsCpp = detector.IsPlainCppProject,
-                        ExternalRoots = detector.IsPlainCppProject && indexEngine ? detector.ExternalIncludeRoots : null
+                        ExternalRoots = PackService.IndexRoots(detector.IsPlainCppProject && indexEngine ? detector.ExternalIncludeRoots : null),
+                        UnloadPackIds = PackService.DisabledPackIds()
                     };
                     var indexer = _indexer;
                     var indexToken = _indexCts.Token;
@@ -203,7 +235,7 @@ namespace PenguinExtention
                         {
                             var progress = new IndexStatusProgress(this);
                             await indexer.IndexAsync(detector.ProjectSourceRoot, detector.EngineSourceRoot,
-                                indexEngine, progress, indexToken).ConfigureAwait(false);
+                                indexEngineSource, progress, indexToken).ConfigureAwait(false);
                             progress.Finish();
                             PenguinLog.Info("Index", "symbols done: " + progress.Summary + " in " + watch.Elapsed.TotalSeconds.ToString("0.0") + " s");
                             await indexer.ScanOccurrencesAsync(detector.ProjectSourceRoot, indexToken).ConfigureAwait(false);
@@ -287,6 +319,10 @@ namespace PenguinExtention
             // Open Penguin Color Theme
             RegisterToolWindowCommand(commandService,
                 PenguinExtensionCommandIds.OpenColorThemeId, typeof(ColorThemeWindow));
+
+            // Penguin Packs + MCP
+            RegisterToolWindowCommand(commandService, PenguinExtensionCommandIds.OpenPacksId, typeof(PacksWindow));
+            RegisterToolWindowCommand(commandService, PenguinExtensionCommandIds.OpenMcpId, typeof(McpWindow));
         }
 
         // ponytail: one helper instead of repeating tool window opening boilerplate
@@ -373,6 +409,7 @@ namespace PenguinExtention
             if (disposing)
             {
                 PenguinOptionsPage.SettingsApplied -= OnSettingsApplied;
+                PackService.Changed -= RequestRestart;
                 BackendService.Changed -= OnBackendChanged;
                 var solutionEvents = _solutionEvents; _solutionEvents = null;
                 var diagnostics = _diagnostics; _diagnostics = null;
@@ -383,6 +420,7 @@ namespace PenguinExtention
                     diagnostics?.Dispose();
                 });
                 _workspaceCts?.Cancel();
+                McpHub.DisposeAll();
                 _ = Task.Run(async () =>
                 {
                     await _lifecycle.WaitAsync().ConfigureAwait(false);

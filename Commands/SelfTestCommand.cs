@@ -33,8 +33,10 @@ namespace PenguinExtention.Commands
 
             // ── Project ──
             var detector = UnrealProjectDetector.Instance;
-            Line(detector?.IsSupportedProject == true, "Project: " + (detector == null ? "(detection has not run — open a solution)"
+            bool unity = detector?.IsUnityProject == true;
+            Line(detector?.IsSupportedProject == true || unity, "Project: " + (detector == null ? "(detection has not run — open a solution)"
                 : detector.IsUnrealProject ? "Unreal — " + detector.UProjectFilePath
+                : unity ? "Unity " + (detector.UnityVersion ?? "(version unknown)") + " — " + detector.ProjectRoot
                 : detector.IsPlainCppProject ? "plain C/C++ — " + detector.ProjectRoot : "none found"));
             if (detector?.IsUnrealProject == true)
             {
@@ -42,6 +44,41 @@ namespace PenguinExtention.Commands
                 Line(!string.IsNullOrEmpty(detector.EngineSourceRoot), "Engine source: " + (detector.EngineSourceRoot ??
                     "(not found — set Tools → Options → PenguinExtension → Engine Root Override)"));
             }
+
+            if (unity)
+            {
+                Line(detector.UnityVersion != null, "ProjectVersion.txt: " + (detector.UnityVersion ?? "no m_EditorVersion line"));
+                Line(detector.UnityEditorPath != null, "Unity editor: " + (detector.UnityEditorPath == null
+                    ? "not found (install " + detector.UnityVersion + " with Unity Hub, or set Tools → Options → PenguinExtension → Unity Editor Override)"
+                    : detector.UnityEditorPath + (detector.UnityEditorExact ? " (exact version)" : " (closest match — the project wants " + detector.UnityVersion + ")")));
+                Line(null, "Docs version: " + (detector.UnityDocsVersion ?? "(latest)") + " — hover a Unity message (void Update) for its docs link");
+                var callbacks = PackService.Callbacks.Count(c => c.Language == "csharp");
+                var snippets = PackService.SnippetsFor("csharp").Length;
+                Line(callbacks > 0, "C# pack data: " + callbacks + " engine messages, " + snippets + " snippets" +
+                    (callbacks == 0 ? " — is the unity pack checked? (Alt+U, Shift+P)" : ""));
+                Line(null, "C# completion/IntelliSense itself is Visual Studio's (Roslyn); the C++ index is off in Unity mode");
+            }
+
+            // ── Packs ──
+            Line(PackService.IsLoaded && PackService.Packs.Count > 0, "Packs: " + (!PackService.IsLoaded ? "not loaded yet"
+                : PackService.Packs.Count + " found (built-in " + PackService.BuiltInDirectory + ", user " + PackService.UserDirectory + ")"));
+            foreach (var p in PackService.Packs)
+                Line(p.Error != null ? false : (bool?)null, "  " + p.Id + " [" + p.Location + "] " + (p.Error != null ? "error: " + p.Error
+                    : (p.Enabled ? "on" : "off") + (p.Choice == null ? " (auto: " + (p.Detected ? "detected" : "not detected") + ")" : " (set in packs.json)") +
+                      (p.ClaimedRoots.Count > 0 ? " — include roots: " + string.Join("; ", p.ClaimedRoots) : "")));
+            if (detector?.IsUnrealProject == true)
+                Line(UnrealMacroSpecifiers.GetSpecifiers("UPROPERTY")?.Length > 0,
+                    "Unreal specifiers from pack: UPROPERTY " + (UnrealMacroSpecifiers.GetSpecifiers("UPROPERTY")?.Length ?? 0) +
+                    ", meta " + (UnrealMacroSpecifiers.GetSpecifiers("meta")?.Length ?? 0) + ", snippets " + UnrealSnippets.All.Length);
+
+            // ── MCP ──
+            await TaskScheduler.Default;
+            var mcpErrors = new List<string>();
+            var mcp = McpConfig.Load(PackService.SolutionDirectory, PackService.McpSuggestions.ToList(), mcpErrors);
+            Line(mcpErrors.Count == 0 ? (bool?)null : false, "MCP servers: " + (mcp.Count == 0 ? "none configured (Alt+U, Shift+M → Edit .mcp.json)"
+                : string.Join(", ", mcp.Select(m => m.Name + (McpHub.Get(m.Name) != null ? " [connected]" : "") + " — " + m.Endpoint))));
+            foreach (var err in mcpErrors) Line(false, "  " + err);
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
             // ── Backend / index ──
             Line(BackendService.IsReady, "Backend: " + BackendService.Status);
@@ -72,6 +109,10 @@ namespace PenguinExtention.Commands
 
                 var members = cache.GetMembers("AActor");
                 Line(members.Count > 0, "Members of AActor (for AActor:: completion) → " + members.Count);
+            }
+            else if (unity)
+            {
+                Line(null, "Index: not used in Unity mode (C# symbols come from Visual Studio)");
             }
             else
             {
@@ -116,6 +157,8 @@ namespace PenguinExtention.Commands
             ProbeLine(report, UnrealQuickInfoSource.Probe);
             ProbeLine(report, UnrealSignatureHelpController.ProbeLookup);
             ProbeLine(report, UnrealSignatureHelpController.ProbeSource);
+            ProbeLine(report, CSharpPackCompletionSource.Probe);
+            ProbeLine(report, CSharpPackQuickInfo.Probe);
             if (FeatureProbe.Seen(UnrealCompletionSource.ProbeAsync) || FeatureProbe.Seen(UnrealLegacyCompletionSource.ProbeLegacy))
                 Line(true, "Completion is wired into this Visual Studio's " +
                     (FeatureProbe.Seen(UnrealCompletionSource.ProbeAsync) ? "async (modern)" : "legacy") + " pipeline");

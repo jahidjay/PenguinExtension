@@ -38,5 +38,7 @@ namespace PenguinExtention.Commands
 
         public const int SelfTestId = 0x0A00;              // U — Penguin Self-Test
         public const int OpenColorThemeId = 0x0A01;        // Shift+T — Penguin Color Theme window
+        public const int OpenPacksId = 0x0A02;             // Shift+P — Penguin Packs window
+        public const int OpenMcpId = 0x0A03;               // Shift+M — Penguin MCP window
     }
 }

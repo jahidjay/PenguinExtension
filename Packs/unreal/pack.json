@@ -1,0 +1,10 @@
+{
+  "id": "unreal",
+  "name": "Unreal Engine",
+  "version": "1.0.0",
+  "description": "UPROPERTY/UFUNCTION/UCLASS/USTRUCT/UENUM specifiers, meta keys and Unreal snippets. Engine source symbols are tagged with this pack.",
+  "languages": ["cpp"],
+  "detect": { "files": ["*.uproject"] },
+  "specifiers": "specifiers.json",
+  "snippets": "snippets.json"
+}

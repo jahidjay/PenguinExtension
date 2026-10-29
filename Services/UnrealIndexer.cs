@@ -112,27 +112,41 @@ namespace PenguinExtention.Services
             catch (OperationCanceledException) { throw; }
             catch (Exception ex) { PenguinLog.Error("Index", "purge failed: " + ex.Message); }
 
-            var files = new List<(string path, bool isEngine)>();
+            // Unload packs the solution has unchecked.
+            try
+            {
+                var unloaded = await _db.GetFilesOfPacksAsync(UnloadPackIds).ConfigureAwait(false);
+                foreach (var file in unloaded)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    await _cache.RemoveFileSymbolsAsync(file).ConfigureAwait(false);
+                }
+                if (unloaded.Count > 0) PenguinLog.Info("Packs", "unloaded " + unloaded.Count + " file(s) of unchecked packs: " + string.Join(", ", UnloadPackIds));
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) { PenguinLog.Error("Packs", "unload failed: " + ex.Message); }
+
+            var files = new List<(string path, bool isEngine, string packId)>();
 
             // Collect project source files (Source/ plus project Plugins/)
             foreach (var root in ProjectRoots(projectSourceRoot))
                 foreach (var f in EnumerateSourceFiles(root))
-                    files.Add((f, false));
+                    files.Add((f, false, null));
 
             // Collect engine source files
             if (indexEngine && !string.IsNullOrEmpty(engineSourceRoot) && Directory.Exists(engineSourceRoot))
             {
                 foreach (var f in EnumerateSourceFiles(engineSourceRoot))
-                    files.Add((f, true));
+                    files.Add((f, true, PackService.EnginePackId));
             }
 
-            // External library include roots (e.g. SDL2/include) — headers only, treated like engine symbols
+            // Library include roots from packs (e.g. SDL3/include) — headers only, treated like engine symbols
             var seen = new HashSet<string>(files.Select(f => f.path), StringComparer.OrdinalIgnoreCase);
-            foreach (var root in ExternalRoots ?? Enumerable.Empty<string>())
+            foreach (var root in ExternalRoots ?? Enumerable.Empty<PackRoot>())
             {
-                if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) continue;
-                foreach (var f in EnumerateSourceFiles(root))
-                    if (!HeaderSourceResolver.IsSource(f) && seen.Add(f)) files.Add((f, true));
+                if (string.IsNullOrEmpty(root.Path) || !Directory.Exists(root.Path)) continue;
+                foreach (var f in EnumerateSourceFiles(root.Path))
+                    if (!HeaderSourceResolver.IsSource(f) && seen.Add(f)) files.Add((f, true, root.PackId));
             }
 
             var progressData = new IndexProgress { TotalFiles = files.Count };
@@ -141,7 +155,7 @@ namespace PenguinExtention.Services
             var semaphore = new SemaphoreSlim(_maxParallelism);
             var tasks = new List<Task>();
 
-            foreach (var (filePath, isEngine) in files)
+            foreach (var (filePath, isEngine, packId) in files)
             {
                 ct.ThrowIfCancellationRequested();
 
@@ -152,7 +166,7 @@ namespace PenguinExtention.Services
                     try
                     {
                         bool processed = false;
-                        try { processed = await IndexSingleFileAsync(filePath, isEngine, ct).ConfigureAwait(false); }
+                        try { processed = await IndexSingleFileAsync(filePath, isEngine, ct, packId).ConfigureAwait(false); }
                         catch (OperationCanceledException) { throw; }
                         catch (Exception ex) { PenguinLog.Error("Index", filePath + ": " + ex.Message); } // one bad file never aborts the pass
                         lock (progressData)
@@ -184,7 +198,7 @@ namespace PenguinExtention.Services
         /// <summary>
         /// Index a single file.  Returns true if the file was actually re-indexed (hash changed).
         /// </summary>
-        public async Task<bool> IndexSingleFileAsync(string filePath, bool isEngine, CancellationToken ct)
+        public async Task<bool> IndexSingleFileAsync(string filePath, bool isEngine, CancellationToken ct, string packId = null)
         {
             ct.ThrowIfCancellationRequested();
 
@@ -203,14 +217,19 @@ namespace PenguinExtention.Services
             // Check if file has changed since last index
             var existingFile = await _db.GetIndexedFileAsync(filePath).ConfigureAwait(false);
             if (existingFile != null && existingFile.ContentHash == hash)
+            {
+                if (existingFile.PackId != packId) await _db.SetFilePackAsync(filePath, packId).ConfigureAwait(false);
                 return false; // unchanged
+            }
 
             // Extract symbols: Unreal reflection macros, then general C++ declarations
             var symbols = ExtractSymbols(content, filePath, isEngine);
             var classInfos = ExtractClassInfos(content, filePath);
             MergeClassMembers(content, filePath, isEngine, symbols);
-            if (!isEngine || IndexExternalAsCpp)
+            // Library headers from a pack get the general C++ extractor too; Unreal engine source is far too large for it.
+            if (!isEngine || IndexExternalAsCpp || (packId != null && packId != PackService.EnginePackId))
                 MergeGeneralCpp(content, filePath, isEngine, symbols, classInfos);
+            foreach (var s in symbols) s.PackId = packId;
 
             // Also runs for an empty result when the file was indexed before, so removed declarations disappear.
             if (symbols.Count > 0 || existingFile != null)
@@ -224,7 +243,8 @@ namespace PenguinExtention.Services
                 FilePath = filePath,
                 ContentHash = hash,
                 LastIndexed = DateTime.UtcNow,
-                IsEngineFile = isEngine
+                IsEngineFile = isEngine,
+                PackId = packId
             }).ConfigureAwait(false);
 
             return true;
@@ -237,7 +257,10 @@ namespace PenguinExtention.Services
         public bool IndexExternalAsCpp { get; set; }
 
         /// <summary>Additional library include directories (headers indexed as external symbols).</summary>
-        public IReadOnlyList<string> ExternalRoots { get; set; }
+        public IReadOnlyList<PackRoot> ExternalRoots { get; set; }
+
+        /// <summary>Packs the solution has unchecked: their files are removed from the index at the start of a pass.</summary>
+        public ICollection<string> UnloadPackIds { get; set; } = new string[0];
 
         /// <summary>Adds general C++ declarations not already covered by a reflection-macro symbol (same name within 3 lines).</summary>
         private static void MergeGeneralCpp(string content, string filePath, bool isExternal, List<UnrealSymbol> symbols, List<UnrealClassInfo> classInfos)

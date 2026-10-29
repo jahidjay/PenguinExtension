@@ -60,6 +60,9 @@
     <Reference Include="System.Xaml" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="WindowsBase" />
     <Reference Include="System.ComponentModel.Composition" />
   </ItemGroup>
@@ -80,6 +83,7 @@
     <Compile Include="Models\UnrealSymbolKind.cs" />
     <Compile Include="Models\UnrealClassInfo.cs" />
     <Compile Include="Models\IndexedFile.cs" />
+    <Compile Include="Models\PackManifest.cs" />
     <Compile Include="Models\SymbolOccurrence.cs" />
   </ItemGroup>
 
@@ -117,6 +121,17 @@
     <Compile Include="Services\SolutionFileIndex.cs" />
     <Compile Include="Services\PenguinOptionsPage.cs" />
     <Compile Include="Services\PremiumHooks.cs" />
+    <Compile Include="Services\PackService.cs" />
+    <Compile Include="Services\PackImporter.cs" />
+    <Compile Include="Services\UnityEditorLocator.cs" />
+    <Compile Include="Services\McpConfig.cs" />
+    <Compile Include="Services\McpClient.cs" />
+    <Compile Include="Services\McpHub.cs" />
+    <Compile Include="Completion\CSharpPackContext.cs" />
+    <Compile Include="Completion\CSharpPackCompletion.cs" />
+    <Compile Include="QuickInfo\CSharpPackQuickInfo.cs" />
+    <Compile Include="UI\PacksWindow.cs" />
+    <Compile Include="UI\McpWindow.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -205,6 +220,15 @@
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
     <None Include="Resources\PenguinCommands.png" />
+  </ItemGroup>
+
+  <!-- Built-in Penguin Packs (docs/PACKS_PLAN.md), installed next to the DLL under Packs\ -->
+  <ItemGroup>
+    <Content Include="Packs\**\*.json">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="docs\PACKS_PLAN.md" />
   </ItemGroup>
 
   <!-- VSIX manifest -->

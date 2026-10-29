@@ -119,5 +119,15 @@ namespace PenguinExtention.Services
         [DisplayName("Index Engine Source")]
         [Description("Unreal: index engine source headers. Plain C/C++: index library include folders (SDL2 etc.). Disable to reduce indexing time.")]
         public bool IndexEngineSource { get; set; } = true;
+
+        [Category("Unity")]
+        [DisplayName("Unity Editor Override")]
+        [Description("Folder of the Unity editor to use (the one with Unity.exe), e.g. D:\\Unity\\2022.3.10f1\\Editor. Leave empty to find the editor matching ProjectSettings/ProjectVersion.txt through Unity Hub.")]
+        public string UnityEditorOverride { get; set; } = string.Empty;
+
+        [Category("Unity")]
+        [DisplayName("Unity Message Completion")]
+        [Description("Offer Unity message stubs (Update, OnTriggerEnter, …) in C# completion. Turn off if Visual Studio Tools for Unity already lists them twice. Hover docs and pack snippets stay on.")]
+        public bool UnityMessageCompletion { get; set; } = true;
     }
 }

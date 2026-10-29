@@ -134,6 +134,16 @@
         <Icon guid="guidPenguinImages" id="bmpPenguin"/>
         <Strings><ButtonText>Penguin Color Theme</ButtonText><ToolTipText>Choose the colors of keywords, classes, functions, enums, UE macros… (Alt+U, Shift+T)</ToolTipText></Strings>
       </Button>
+      <Button guid="guidPenguinExtensionCmdSet" id="OpenPacksId" priority="0x0420" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Icon guid="guidPenguinImages" id="bmpPenguin"/>
+        <Strings><ButtonText>Penguin Packs</ButtonText><ToolTipText>Turn Unreal/Unity/SDL3/imported packs on or off for this solution, import packs and libraries (Alt+U, Shift+P)</ToolTipText></Strings>
+      </Button>
+      <Button guid="guidPenguinExtensionCmdSet" id="OpenMcpId" priority="0x0430" type="Button">
+        <Parent guid="guidPenguinExtensionCmdSet" id="PenguinWindowsGroup"/>
+        <Icon guid="guidPenguinImages" id="bmpPenguin"/>
+        <Strings><ButtonText>Penguin MCP</ButtonText><ToolTipText>Connect to Unity/Unreal/any MCP server and call its tools (Alt+U, Shift+M)</ToolTipText></Strings>
+      </Button>
     </Buttons>
 
     <Bitmaps>
@@ -190,6 +200,8 @@
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenShortcutsReferenceId" editor="guidVSStd97" key1="U" mod1="Alt" key2="K"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="SelfTestId" editor="guidVSStd97" key1="U" mod1="Alt" key2="U"/>
     <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenColorThemeId" editor="guidVSStd97" key1="U" mod1="Alt" key2="T" mod2="Shift"/>
+    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenPacksId" editor="guidVSStd97" key1="U" mod1="Alt" key2="P" mod2="Shift"/>
+    <KeyBinding guid="guidPenguinExtensionCmdSet" id="OpenMcpId" editor="guidVSStd97" key1="U" mod1="Alt" key2="M" mod2="Shift"/>
     <!-- Visual Assist default keys, scoped to the text editor (where VA binds them). -->
   </KeyBindings>
 
@@ -223,6 +235,8 @@
       <IDSymbol name="CancelCoreJobId" value="0x0712"/>
       <IDSymbol name="SelfTestId" value="0x0A00"/>
       <IDSymbol name="OpenColorThemeId" value="0x0A01"/>
+      <IDSymbol name="OpenPacksId" value="0x0A02"/>
+      <IDSymbol name="OpenMcpId" value="0x0A03"/>
     </GuidSymbol>
   </Symbols>
 

@@ -1,0 +1,555 @@
+{
+  "language": "csharp",
+  "defaultOwner": "MonoBehaviour",
+  "callbacks": [
+    {
+      "owner": "MonoBehaviour",
+      "name": "Awake",
+      "signature": "void Awake()",
+      "description": "Called once when the script instance is loaded, before Start, even if the component is disabled.",
+      "docPage": "MonoBehaviour.Awake"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnEnable",
+      "signature": "void OnEnable()",
+      "description": "Called when the object becomes enabled and active.",
+      "docPage": "MonoBehaviour.OnEnable"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "Start",
+      "signature": "void Start()",
+      "description": "Called once before the first frame Update, only if the component is enabled.",
+      "docPage": "MonoBehaviour.Start"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "FixedUpdate",
+      "signature": "void FixedUpdate()",
+      "description": "Called every fixed framerate frame (Time.fixedDeltaTime). Use for physics.",
+      "docPage": "MonoBehaviour.FixedUpdate"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "Update",
+      "signature": "void Update()",
+      "description": "Called every frame while the MonoBehaviour is enabled.",
+      "docPage": "MonoBehaviour.Update"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "LateUpdate",
+      "signature": "void LateUpdate()",
+      "description": "Called every frame after all Update functions (follow cameras, final adjustments).",
+      "docPage": "MonoBehaviour.LateUpdate"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnDisable",
+      "signature": "void OnDisable()",
+      "description": "Called when the behaviour becomes disabled or the object is destroyed.",
+      "docPage": "MonoBehaviour.OnDisable"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnDestroy",
+      "signature": "void OnDestroy()",
+      "description": "Called when the MonoBehaviour will be destroyed.",
+      "docPage": "MonoBehaviour.OnDestroy"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnValidate",
+      "signature": "void OnValidate()",
+      "description": "Editor only: called when the script is loaded or a value changes in the Inspector.",
+      "docPage": "MonoBehaviour.OnValidate"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "Reset",
+      "signature": "void Reset()",
+      "description": "Editor only: called when the component is first added or Reset is chosen in the Inspector.",
+      "docPage": "MonoBehaviour.Reset"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnApplicationPause",
+      "signature": "void OnApplicationPause(bool pauseStatus)",
+      "description": "Called when the application pauses or resumes (mobile background/foreground).",
+      "docPage": "MonoBehaviour.OnApplicationPause"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnApplicationFocus",
+      "signature": "void OnApplicationFocus(bool hasFocus)",
+      "description": "Called when the player window gains or loses focus.",
+      "docPage": "MonoBehaviour.OnApplicationFocus"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnApplicationQuit",
+      "signature": "void OnApplicationQuit()",
+      "description": "Called on all game objects before the application quits (and when play mode stops in the Editor).",
+      "docPage": "MonoBehaviour.OnApplicationQuit"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnCollisionEnter",
+      "signature": "void OnCollisionEnter(Collision collision)",
+      "description": "Called when this collider/rigidbody starts touching another rigidbody/collider.",
+      "docPage": "MonoBehaviour.OnCollisionEnter"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnCollisionStay",
+      "signature": "void OnCollisionStay(Collision collision)",
+      "description": "Called once per physics frame for every collider/rigidbody that is touching.",
+      "docPage": "MonoBehaviour.OnCollisionStay"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnCollisionExit",
+      "signature": "void OnCollisionExit(Collision collision)",
+      "description": "Called when this collider/rigidbody stops touching another rigidbody/collider.",
+      "docPage": "MonoBehaviour.OnCollisionExit"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnTriggerEnter",
+      "signature": "void OnTriggerEnter(Collider other)",
+      "description": "Called when another collider enters this trigger.",
+      "docPage": "MonoBehaviour.OnTriggerEnter"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnTriggerStay",
+      "signature": "void OnTriggerStay(Collider other)",
+      "description": "Called once per physics frame for every collider inside this trigger.",
+      "docPage": "MonoBehaviour.OnTriggerStay"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnTriggerExit",
+      "signature": "void OnTriggerExit(Collider other)",
+      "description": "Called when another collider leaves this trigger.",
+      "docPage": "MonoBehaviour.OnTriggerExit"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnCollisionEnter2D",
+      "signature": "void OnCollisionEnter2D(Collision2D collision)",
+      "description": "2D physics: called when an incoming collider makes contact.",
+      "docPage": "MonoBehaviour.OnCollisionEnter2D"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnCollisionStay2D",
+      "signature": "void OnCollisionStay2D(Collision2D collision)",
+      "description": "2D physics: called each frame while colliders touch.",
+      "docPage": "MonoBehaviour.OnCollisionStay2D"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnCollisionExit2D",
+      "signature": "void OnCollisionExit2D(Collision2D collision)",
+      "description": "2D physics: called when colliders stop touching.",
+      "docPage": "MonoBehaviour.OnCollisionExit2D"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnTriggerEnter2D",
+      "signature": "void OnTriggerEnter2D(Collider2D other)",
+      "description": "2D physics: called when another collider enters this trigger.",
+      "docPage": "MonoBehaviour.OnTriggerEnter2D"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnTriggerStay2D",
+      "signature": "void OnTriggerStay2D(Collider2D other)",
+      "description": "2D physics: called each frame while another collider is inside this trigger.",
+      "docPage": "MonoBehaviour.OnTriggerStay2D"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnTriggerExit2D",
+      "signature": "void OnTriggerExit2D(Collider2D other)",
+      "description": "2D physics: called when another collider leaves this trigger.",
+      "docPage": "MonoBehaviour.OnTriggerExit2D"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnControllerColliderHit",
+      "signature": "void OnControllerColliderHit(ControllerColliderHit hit)",
+      "description": "Called when a CharacterController hits a collider while moving.",
+      "docPage": "MonoBehaviour.OnControllerColliderHit"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnJointBreak",
+      "signature": "void OnJointBreak(float breakForce)",
+      "description": "Called when a joint attached to the same GameObject breaks.",
+      "docPage": "MonoBehaviour.OnJointBreak"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnJointBreak2D",
+      "signature": "void OnJointBreak2D(Joint2D brokenJoint)",
+      "description": "Called when a Joint2D attached to the same GameObject breaks.",
+      "docPage": "MonoBehaviour.OnJointBreak2D"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnParticleCollision",
+      "signature": "void OnParticleCollision(GameObject other)",
+      "description": "Called when a particle hits a collider (Collision module, Send Collision Messages).",
+      "docPage": "MonoBehaviour.OnParticleCollision"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnParticleTrigger",
+      "signature": "void OnParticleTrigger()",
+      "description": "Called when particles meet the conditions of the Trigger module.",
+      "docPage": "MonoBehaviour.OnParticleTrigger"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnParticleSystemStopped",
+      "signature": "void OnParticleSystemStopped()",
+      "description": "Called when every particle system on this GameObject has stopped (Stop Action = Callback).",
+      "docPage": "MonoBehaviour.OnParticleSystemStopped"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnMouseDown",
+      "signature": "void OnMouseDown()",
+      "description": "Called when the user presses the mouse button over this collider or GUIElement.",
+      "docPage": "MonoBehaviour.OnMouseDown"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnMouseUp",
+      "signature": "void OnMouseUp()",
+      "description": "Called when the user releases the mouse button.",
+      "docPage": "MonoBehaviour.OnMouseUp"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnMouseUpAsButton",
+      "signature": "void OnMouseUpAsButton()",
+      "description": "Called when the mouse is released over the same collider it was pressed on.",
+      "docPage": "MonoBehaviour.OnMouseUpAsButton"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnMouseEnter",
+      "signature": "void OnMouseEnter()",
+      "description": "Called when the mouse enters this collider.",
+      "docPage": "MonoBehaviour.OnMouseEnter"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnMouseOver",
+      "signature": "void OnMouseOver()",
+      "description": "Called every frame while the mouse is over this collider.",
+      "docPage": "MonoBehaviour.OnMouseOver"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnMouseExit",
+      "signature": "void OnMouseExit()",
+      "description": "Called when the mouse leaves this collider.",
+      "docPage": "MonoBehaviour.OnMouseExit"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnMouseDrag",
+      "signature": "void OnMouseDrag()",
+      "description": "Called while the user drags after pressing the mouse on this collider.",
+      "docPage": "MonoBehaviour.OnMouseDrag"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnBecameVisible",
+      "signature": "void OnBecameVisible()",
+      "description": "Called when the renderer becomes visible by any camera.",
+      "docPage": "MonoBehaviour.OnBecameVisible"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnBecameInvisible",
+      "signature": "void OnBecameInvisible()",
+      "description": "Called when the renderer is no longer visible by any camera.",
+      "docPage": "MonoBehaviour.OnBecameInvisible"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnWillRenderObject",
+      "signature": "void OnWillRenderObject()",
+      "description": "Called once for each camera if the object is visible and not a UI element.",
+      "docPage": "MonoBehaviour.OnWillRenderObject"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnRenderObject",
+      "signature": "void OnRenderObject()",
+      "description": "Called after a camera renders the scene (use with GL calls).",
+      "docPage": "MonoBehaviour.OnRenderObject"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnDrawGizmos",
+      "signature": "void OnDrawGizmos()",
+      "description": "Draw gizmos that are always visible in the Scene view.",
+      "docPage": "MonoBehaviour.OnDrawGizmos"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnDrawGizmosSelected",
+      "signature": "void OnDrawGizmosSelected()",
+      "description": "Draw gizmos only when the object is selected.",
+      "docPage": "MonoBehaviour.OnDrawGizmosSelected"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnGUI",
+      "signature": "void OnGUI()",
+      "description": "Immediate-mode GUI (IMGUI); called several times per frame.",
+      "docPage": "MonoBehaviour.OnGUI"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnAnimatorMove",
+      "signature": "void OnAnimatorMove()",
+      "description": "Callback for processing animation movements (root motion).",
+      "docPage": "MonoBehaviour.OnAnimatorMove"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnAnimatorIK",
+      "signature": "void OnAnimatorIK(int layerIndex)",
+      "description": "Callback for setting up animation IK (inverse kinematics).",
+      "docPage": "MonoBehaviour.OnAnimatorIK"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnTransformParentChanged",
+      "signature": "void OnTransformParentChanged()",
+      "description": "Called when the parent of the transform changes.",
+      "docPage": "MonoBehaviour.OnTransformParentChanged"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnTransformChildrenChanged",
+      "signature": "void OnTransformChildrenChanged()",
+      "description": "Called when the list of children of the transform changes.",
+      "docPage": "MonoBehaviour.OnTransformChildrenChanged"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnRectTransformDimensionsChange",
+      "signature": "void OnRectTransformDimensionsChange()",
+      "description": "Called when the dimensions of an associated RectTransform change.",
+      "docPage": "MonoBehaviour.OnRectTransformDimensionsChange"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnCanvasGroupChanged",
+      "signature": "void OnCanvasGroupChanged()",
+      "description": "Called when the state of the parent CanvasGroup changes.",
+      "docPage": "MonoBehaviour.OnCanvasGroupChanged"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnPreRender",
+      "signature": "void OnPreRender()",
+      "description": "Built-in render pipeline only: called before a camera starts rendering.",
+      "docPage": "MonoBehaviour.OnPreRender"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnPostRender",
+      "signature": "void OnPostRender()",
+      "description": "Built-in render pipeline only: called after a camera finishes rendering.",
+      "docPage": "MonoBehaviour.OnPostRender"
+    },
+    {
+      "owner": "MonoBehaviour",
+      "name": "OnRenderImage",
+      "signature": "void OnRenderImage(RenderTexture source, RenderTexture destination)",
+      "description": "Built-in render pipeline only: post-process the rendered image.",
+      "docPage": "MonoBehaviour.OnRenderImage"
+    },
+    {
+      "owner": "ScriptableObject",
+      "name": "Awake",
+      "signature": "void Awake()",
+      "description": "Called when the ScriptableObject instance is created or loaded.",
+      "docPage": "ScriptableObject.Awake"
+    },
+    {
+      "owner": "ScriptableObject",
+      "name": "OnEnable",
+      "signature": "void OnEnable()",
+      "description": "Called when the object is loaded.",
+      "docPage": "ScriptableObject.OnEnable"
+    },
+    {
+      "owner": "ScriptableObject",
+      "name": "OnDisable",
+      "signature": "void OnDisable()",
+      "description": "Called when the object goes out of scope or is unloaded.",
+      "docPage": "ScriptableObject.OnDisable"
+    },
+    {
+      "owner": "ScriptableObject",
+      "name": "OnDestroy",
+      "signature": "void OnDestroy()",
+      "description": "Called when the ScriptableObject will be destroyed.",
+      "docPage": "ScriptableObject.OnDestroy"
+    },
+    {
+      "owner": "ScriptableObject",
+      "name": "OnValidate",
+      "signature": "void OnValidate()",
+      "description": "Editor only: called when the asset is loaded or a value changes in the Inspector.",
+      "docPage": "ScriptableObject.OnValidate"
+    },
+    {
+      "owner": "ScriptableObject",
+      "name": "Reset",
+      "signature": "void Reset()",
+      "description": "Editor only: called when the asset is created or Reset is chosen.",
+      "docPage": "ScriptableObject.Reset"
+    },
+    {
+      "owner": "Editor",
+      "name": "OnEnable",
+      "signature": "void OnEnable()",
+      "description": "Called when the custom inspector is shown (cache SerializedProperty fields here).",
+      "docPage": "Editor.OnEnable"
+    },
+    {
+      "owner": "Editor",
+      "name": "OnDisable",
+      "signature": "void OnDisable()",
+      "description": "Called when the custom inspector is hidden.",
+      "docPage": "Editor.OnDisable"
+    },
+    {
+      "owner": "Editor",
+      "name": "OnSceneGUI",
+      "signature": "void OnSceneGUI()",
+      "description": "Draw handles and react to input in the Scene view for the inspected object.",
+      "docPage": "Editor.OnSceneGUI"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "CreateGUI",
+      "signature": "void CreateGUI()",
+      "description": "UI Toolkit: build the window's visual tree (rootVisualElement).",
+      "docPage": "EditorWindow.CreateGUI"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnGUI",
+      "signature": "void OnGUI()",
+      "description": "IMGUI: draw the window contents.",
+      "docPage": "EditorWindow.OnGUI"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnEnable",
+      "signature": "void OnEnable()",
+      "description": "Called when the window is opened or after a domain reload.",
+      "docPage": "EditorWindow.OnEnable"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnDisable",
+      "signature": "void OnDisable()",
+      "description": "Called when the window is closed or before a domain reload.",
+      "docPage": "EditorWindow.OnDisable"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnFocus",
+      "signature": "void OnFocus()",
+      "description": "Called when the window gets keyboard focus.",
+      "docPage": "EditorWindow.OnFocus"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnLostFocus",
+      "signature": "void OnLostFocus()",
+      "description": "Called when the window loses keyboard focus.",
+      "docPage": "EditorWindow.OnLostFocus"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnSelectionChange",
+      "signature": "void OnSelectionChange()",
+      "description": "Called whenever the selection changes.",
+      "docPage": "EditorWindow.OnSelectionChange"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnHierarchyChange",
+      "signature": "void OnHierarchyChange()",
+      "description": "Called whenever an object in the hierarchy changes.",
+      "docPage": "EditorWindow.OnHierarchyChange"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnProjectChange",
+      "signature": "void OnProjectChange()",
+      "description": "Called whenever the project assets change.",
+      "docPage": "EditorWindow.OnProjectChange"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnInspectorUpdate",
+      "signature": "void OnInspectorUpdate()",
+      "description": "Called about 10 times per second to repaint.",
+      "docPage": "EditorWindow.OnInspectorUpdate"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "Update",
+      "signature": "void Update()",
+      "description": "Called many times per second on all visible windows.",
+      "docPage": "EditorWindow.Update"
+    },
+    {
+      "owner": "EditorWindow",
+      "name": "OnDestroy",
+      "signature": "void OnDestroy()",
+      "description": "Called when the window is closed.",
+      "docPage": "EditorWindow.OnDestroy"
+    },
+    {
+      "owner": "StateMachineBehaviour",
+      "name": "OnStateEnter",
+      "signature": "override void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)",
+      "description": "Called when a transition starts and the state machine starts to evaluate this state.",
+      "docPage": "StateMachineBehaviour.OnStateEnter",
+      "access": "public"
+    },
+    {
+      "owner": "StateMachineBehaviour",
+      "name": "OnStateUpdate",
+      "signature": "override void OnStateUpdate(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)",
+      "description": "Called on each Update frame between OnStateEnter and OnStateExit.",
+      "docPage": "StateMachineBehaviour.OnStateUpdate",
+      "access": "public"
+    },
+    {
+      "owner": "StateMachineBehaviour",
+      "name": "OnStateExit",
+      "signature": "override void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)",
+      "description": "Called when a transition ends and the state machine finishes evaluating this state.",
+      "docPage": "StateMachineBehaviour.OnStateExit",
+      "access": "public"
+    }
+  ]
+}

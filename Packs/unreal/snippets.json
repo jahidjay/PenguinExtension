@@ -1,0 +1,225 @@
+{
+  "snippets": [
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = \"Default\")",
+      "description": "Editable everywhere, read/write in Blueprint.",
+      "caretBack": 2
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = \"Components\")",
+      "description": "Components: visible in the editor, read-only in Blueprint.",
+      "caretBack": 2
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = \"Default\")",
+      "description": "Tuning value set on the class defaults (Blueprint subclass).",
+      "caretBack": 2
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(EditInstanceOnly, Category = \"Default\")",
+      "description": "Set per placed instance in the level.",
+      "caretBack": 2
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(BlueprintReadOnly, Category = \"State\")",
+      "description": "Runtime state Blueprint can read.",
+      "caretBack": 2
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(Replicated)",
+      "description": "Replicated to clients (add to GetLifetimeReplicatedProps)."
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(ReplicatedUsing = OnRep_)",
+      "description": "Replicated with an OnRep_ notify function.",
+      "caretBack": 1
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(Transient)",
+      "description": "Not saved; reset on load."
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(Config)",
+      "description": "Loaded from the class's config .ini."
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY(meta = (BindWidget))",
+      "description": "UMG: bound to the widget with the same name."
+    },
+    {
+      "keyword": "UPROPERTY",
+      "text": "UPROPERTY()",
+      "description": "Reflected for GC/serialization only.",
+      "caretBack": 1
+    },
+    {
+      "keyword": "UFUNCTION",
+      "text": "UFUNCTION(BlueprintCallable, Category = \"Default\")",
+      "description": "Callable from Blueprint (exec node).",
+      "caretBack": 2
+    },
+    {
+      "keyword": "UFUNCTION",
+      "text": "UFUNCTION(BlueprintPure, Category = \"Default\")",
+      "description": "Pure Blueprint getter (no exec pins).",
+      "caretBack": 2
+    },
+    {
+      "keyword": "UFUNCTION",
+      "text": "UFUNCTION(BlueprintImplementableEvent, Category = \"Default\")",
+      "description": "Declared in C++, implemented in Blueprint.",
+      "caretBack": 2
+    },
+    {
+      "keyword": "UFUNCTION",
+      "text": "UFUNCTION(BlueprintNativeEvent, Category = \"Default\")",
+      "description": "C++ default (Name_Implementation), overridable in Blueprint.",
+      "caretBack": 2
+    },
+    {
+      "keyword": "UFUNCTION",
+      "text": "UFUNCTION(Server, Reliable)",
+      "description": "Client → server RPC (implement Name_Implementation)."
+    },
+    {
+      "keyword": "UFUNCTION",
+      "text": "UFUNCTION(Client, Reliable)",
+      "description": "Server → owning client RPC."
+    },
+    {
+      "keyword": "UFUNCTION",
+      "text": "UFUNCTION(NetMulticast, Unreliable)",
+      "description": "Server → all clients RPC."
+    },
+    {
+      "keyword": "UFUNCTION",
+      "text": "UFUNCTION(Exec)",
+      "description": "Console command (on player controller, pawn, HUD, cheat manager, game mode)."
+    },
+    {
+      "keyword": "UFUNCTION",
+      "text": "UFUNCTION()",
+      "description": "Reflected (needed for delegates / timers by name).",
+      "caretBack": 1
+    },
+    {
+      "keyword": "UCLASS",
+      "text": "UCLASS()",
+      "description": "Reflected UObject class.",
+      "caretBack": 1
+    },
+    {
+      "keyword": "UCLASS",
+      "text": "UCLASS(Blueprintable, BlueprintType)",
+      "description": "Can be subclassed and used as a variable type in Blueprint."
+    },
+    {
+      "keyword": "UCLASS",
+      "text": "UCLASS(Abstract)",
+      "description": "Cannot be instantiated directly."
+    },
+    {
+      "keyword": "UCLASS",
+      "text": "UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))",
+      "description": "Actor component addable in the Blueprint editor."
+    },
+    {
+      "keyword": "USTRUCT",
+      "text": "USTRUCT(BlueprintType)",
+      "description": "Struct usable as a Blueprint variable."
+    },
+    {
+      "keyword": "USTRUCT",
+      "text": "USTRUCT()",
+      "description": "Reflected struct.",
+      "caretBack": 1
+    },
+    {
+      "keyword": "UENUM",
+      "text": "UENUM(BlueprintType)",
+      "description": "Enum usable in Blueprint (enum class E… : uint8)."
+    },
+    {
+      "keyword": "UENUM",
+      "text": "UENUM()",
+      "description": "Reflected enum.",
+      "caretBack": 1
+    },
+    {
+      "keyword": "UINTERFACE",
+      "text": "UINTERFACE(MinimalAPI, Blueprintable)",
+      "description": "Interface declaration (pair with class I…)."
+    },
+    {
+      "keyword": "GENERATED_BODY",
+      "text": "GENERATED_BODY()",
+      "description": "Required first line in every reflected class/struct."
+    },
+    {
+      "keyword": "UE_LOG",
+      "text": "UE_LOG(LogTemp, Warning, TEXT(\"\"));",
+      "description": "Log to the Output Log.",
+      "caretBack": 4
+    },
+    {
+      "keyword": "UE_LOG",
+      "text": "UE_LOG(LogTemp, Log, TEXT(\"%s\"), *GetName());",
+      "description": "Log with a formatted value."
+    },
+    {
+      "keyword": "GEngine",
+      "text": "GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT(\"\"));",
+      "description": "Print on screen.",
+      "caretBack": 4
+    },
+    {
+      "keyword": "check",
+      "text": "check();",
+      "description": "Assert (development builds; crashes on failure).",
+      "caretBack": 2
+    },
+    {
+      "keyword": "ensure",
+      "text": "ensure();",
+      "description": "Soft assert: logs once and continues.",
+      "caretBack": 2
+    },
+    {
+      "keyword": "DECLARE_DYNAMIC_MULTICAST_DELEGATE",
+      "text": "DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnSomething, float, Value);",
+      "description": "Blueprint-assignable event delegate type."
+    },
+    {
+      "keyword": "DECLARE_DELEGATE",
+      "text": "DECLARE_DELEGATE_OneParam(FOnSomething, float);",
+      "description": "Single-bound C++ delegate type."
+    },
+    {
+      "keyword": "CreateDefaultSubobject",
+      "text": "CreateDefaultSubobject<UStaticMeshComponent>(TEXT(\"Mesh\"));",
+      "description": "Create a component in the constructor.",
+      "caretBack": 4
+    },
+    {
+      "keyword": "GetWorldTimerManager",
+      "text": "GetWorldTimerManager().SetTimer(TimerHandle, this, &ThisClass::OnTimer, 1.0f, true);",
+      "description": "Repeating timer."
+    },
+    {
+      "keyword": "DOREPLIFETIME",
+      "text": "DOREPLIFETIME(ThisClass, );",
+      "description": "Register a replicated property.",
+      "caretBack": 2
+    }
+  ]
+}

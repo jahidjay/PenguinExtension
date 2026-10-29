@@ -1,0 +1,449 @@
+{
+  "macros": {
+    "UPROPERTY": [
+      {
+        "name": "EditAnywhere",
+        "description": "Property can be edited in the Details panel on archetypes and instances."
+      },
+      {
+        "name": "EditDefaultsOnly",
+        "description": "Property can only be edited on archetypes (class defaults)."
+      },
+      {
+        "name": "EditInstanceOnly",
+        "description": "Property can only be edited on instances, not archetypes."
+      },
+      {
+        "name": "VisibleAnywhere",
+        "description": "Property is visible but not editable in the Details panel."
+      },
+      {
+        "name": "VisibleDefaultsOnly",
+        "description": "Property is visible on archetypes only, not editable."
+      },
+      {
+        "name": "VisibleInstanceOnly",
+        "description": "Property is visible on instances only, not editable."
+      },
+      {
+        "name": "BlueprintReadWrite",
+        "description": "Property can be read and written from Blueprints."
+      },
+      {
+        "name": "BlueprintReadOnly",
+        "description": "Property can be read from Blueprints but not modified."
+      },
+      {
+        "name": "Category",
+        "description": "Groups the property under a category in the Details panel.",
+        "insert": "Category = \"\""
+      },
+      {
+        "name": "Transient",
+        "description": "Property is not serialized; reset to default on load."
+      },
+      {
+        "name": "Replicated",
+        "description": "Property is replicated over the network."
+      },
+      {
+        "name": "ReplicatedUsing",
+        "description": "Replicated with a notification function.",
+        "insert": "ReplicatedUsing = OnRep_"
+      },
+      {
+        "name": "SaveGame",
+        "description": "Property is included in save game serialization."
+      },
+      {
+        "name": "Interp",
+        "description": "Property can be driven by Matinee/Sequencer tracks."
+      },
+      {
+        "name": "NoClear",
+        "description": "Prevents the property from being set to None in the editor."
+      },
+      {
+        "name": "SimpleDisplay",
+        "description": "Property always appears in the simplified Details view."
+      },
+      {
+        "name": "AdvancedDisplay",
+        "description": "Property is hidden in the Details panel unless Advanced is toggled."
+      },
+      {
+        "name": "Config",
+        "description": "Value can be set in .ini config files."
+      },
+      {
+        "name": "GlobalConfig",
+        "description": "Works like Config but value is shared across all instances."
+      },
+      {
+        "name": "Instanced",
+        "description": "Object reference is instanced per-outer (deep copy)."
+      },
+      {
+        "name": "Export",
+        "description": "Object is exported as a subobject when copy-pasting."
+      },
+      {
+        "name": "NoClear",
+        "description": "Prevents clearing object references in the editor."
+      },
+      {
+        "name": "BlueprintAssignable",
+        "description": "Multicast delegate can be bound in Blueprints."
+      },
+      {
+        "name": "BlueprintCallable",
+        "description": "Delegate can be called (broadcast) from Blueprints."
+      },
+      {
+        "name": "BlueprintAuthorityOnly",
+        "description": "Multicast delegate only fires on the server."
+      },
+      {
+        "name": "NotReplicated",
+        "description": "Skips replication for a struct member."
+      },
+      {
+        "name": "meta",
+        "description": "Metadata specifiers block.",
+        "insert": "meta = ()"
+      }
+    ],
+    "UFUNCTION": [
+      {
+        "name": "BlueprintCallable",
+        "description": "Function can be called from a Blueprint graph."
+      },
+      {
+        "name": "BlueprintPure",
+        "description": "Function has no side effects and no exec pins."
+      },
+      {
+        "name": "BlueprintNativeEvent",
+        "description": "C++ provides default implementation; Blueprint can override."
+      },
+      {
+        "name": "BlueprintImplementableEvent",
+        "description": "No C++ body; must be implemented in Blueprint."
+      },
+      {
+        "name": "Category",
+        "description": "Groups the function in Blueprint menus.",
+        "insert": "Category = \"\""
+      },
+      {
+        "name": "Server",
+        "description": "Function is executed on the server (RPC)."
+      },
+      {
+        "name": "Client",
+        "description": "Function is executed on the owning client (RPC)."
+      },
+      {
+        "name": "NetMulticast",
+        "description": "Function is executed on server and all clients (RPC)."
+      },
+      {
+        "name": "Reliable",
+        "description": "RPC is guaranteed to arrive (use sparingly)."
+      },
+      {
+        "name": "Unreliable",
+        "description": "RPC may be dropped under bandwidth pressure."
+      },
+      {
+        "name": "WithValidation",
+        "description": "RPC requires a validation function (_Validate)."
+      },
+      {
+        "name": "BlueprintAuthorityOnly",
+        "description": "Only callable on the server from Blueprints."
+      },
+      {
+        "name": "BlueprintCosmetic",
+        "description": "Function is cosmetic and runs on all clients."
+      },
+      {
+        "name": "Exec",
+        "description": "Function can be called from the console command line."
+      },
+      {
+        "name": "CallInEditor",
+        "description": "Function appears as a button in the Details panel."
+      },
+      {
+        "name": "meta",
+        "description": "Metadata specifiers block.",
+        "insert": "meta = ()"
+      }
+    ],
+    "UCLASS": [
+      {
+        "name": "Blueprintable",
+        "description": "Class can be used as a base for Blueprints."
+      },
+      {
+        "name": "NotBlueprintable",
+        "description": "Class cannot be used as a Blueprint base."
+      },
+      {
+        "name": "BlueprintType",
+        "description": "Class can be used as a variable type in Blueprints."
+      },
+      {
+        "name": "Abstract",
+        "description": "Class cannot be instantiated directly."
+      },
+      {
+        "name": "NotPlaceable",
+        "description": "Class cannot be placed in a level via the editor."
+      },
+      {
+        "name": "Placeable",
+        "description": "Overrides inherited NotPlaceable."
+      },
+      {
+        "name": "Transient",
+        "description": "Objects of this class are never saved to disk."
+      },
+      {
+        "name": "Config",
+        "description": "Class can read values from a config (.ini) file.",
+        "insert": "Config = Game"
+      },
+      {
+        "name": "DefaultToInstanced",
+        "description": "All instances are instanced (deep-copied)."
+      },
+      {
+        "name": "EditInlineNew",
+        "description": "Objects can be created inline in the property editor."
+      },
+      {
+        "name": "HideDropdown",
+        "description": "Hides this class from property editor dropdowns."
+      },
+      {
+        "name": "ShowCategories",
+        "description": "Overrides inherited HideCategories.",
+        "insert": "ShowCategories = ()"
+      },
+      {
+        "name": "HideCategories",
+        "description": "Hides specified categories in the editor.",
+        "insert": "HideCategories = ()"
+      },
+      {
+        "name": "ClassGroup",
+        "description": "Groups the class in the editor class viewer.",
+        "insert": "ClassGroup = ()"
+      },
+      {
+        "name": "MinimalAPI",
+        "description": "Only the type is exported; no functions."
+      },
+      {
+        "name": "Within",
+        "description": "Class can only exist as a subobject of the named outer class.",
+        "insert": "Within = "
+      },
+      {
+        "name": "meta",
+        "description": "Metadata specifiers block.",
+        "insert": "meta = ()"
+      }
+    ],
+    "USTRUCT": [
+      {
+        "name": "BlueprintType",
+        "description": "Struct can be used as a variable type in Blueprints."
+      },
+      {
+        "name": "NoExport",
+        "description": "Struct is not auto-generated in the .generated.h header."
+      },
+      {
+        "name": "Atomic",
+        "description": "Struct is always serialized as a single unit."
+      },
+      {
+        "name": "IsAlwaysAccessible",
+        "description": "Struct is always accessible for Blueprint use."
+      },
+      {
+        "name": "HasDefaults",
+        "description": "Struct supports default value initialization."
+      },
+      {
+        "name": "HasNoOpConstructor",
+        "description": "Struct has no user-defined constructor."
+      },
+      {
+        "name": "meta",
+        "description": "Metadata specifiers block.",
+        "insert": "meta = ()"
+      }
+    ],
+    "UENUM": [
+      {
+        "name": "BlueprintType",
+        "description": "Enum can be used as a variable type in Blueprints."
+      },
+      {
+        "name": "Flags",
+        "description": "Enum values can be combined as a bitmask."
+      },
+      {
+        "name": "meta",
+        "description": "Metadata specifiers block.",
+        "insert": "meta = ()"
+      }
+    ],
+    "meta": [
+      {
+        "name": "DisplayName",
+        "description": "Name shown in the editor and Blueprint instead of the C++ name.",
+        "insert": "DisplayName = \"\""
+      },
+      {
+        "name": "ToolTip",
+        "description": "Overrides the tooltip taken from the doc comment.",
+        "insert": "ToolTip = \"\""
+      },
+      {
+        "name": "ClampMin",
+        "description": "Minimum value the editor allows for a numeric property.",
+        "insert": "ClampMin = \"\""
+      },
+      {
+        "name": "ClampMax",
+        "description": "Maximum value the editor allows for a numeric property.",
+        "insert": "ClampMax = \"\""
+      },
+      {
+        "name": "UIMin",
+        "description": "Minimum value of the editor slider.",
+        "insert": "UIMin = \"\""
+      },
+      {
+        "name": "UIMax",
+        "description": "Maximum value of the editor slider.",
+        "insert": "UIMax = \"\""
+      },
+      {
+        "name": "Units",
+        "description": "Display unit, e.g. \"cm\", \"s\", \"deg\".",
+        "insert": "Units = \"\""
+      },
+      {
+        "name": "EditCondition",
+        "description": "Property is editable only when the expression is true.",
+        "insert": "EditCondition = \"\""
+      },
+      {
+        "name": "EditConditionHides",
+        "description": "Hide (instead of disable) the property when EditCondition is false."
+      },
+      {
+        "name": "InlineEditConditionToggle",
+        "description": "Bool shown as an inline checkbox next to the property it controls."
+      },
+      {
+        "name": "AllowPrivateAccess",
+        "description": "Lets Blueprint access a private/protected C++ property."
+      },
+      {
+        "name": "ExposeOnSpawn",
+        "description": "Shows the property as a pin on SpawnActor / Construct Object nodes."
+      },
+      {
+        "name": "MakeEditWidget",
+        "description": "Shows a 3D widget for a vector/transform property in the viewport."
+      },
+      {
+        "name": "BindWidget",
+        "description": "UMG: bind this property to the widget with the same name."
+      },
+      {
+        "name": "BindWidgetOptional",
+        "description": "UMG: like BindWidget, but no compile error when missing."
+      },
+      {
+        "name": "AllowedClasses",
+        "description": "Restricts asset pickers to these classes.",
+        "insert": "AllowedClasses = \"\""
+      },
+      {
+        "name": "MustImplement",
+        "description": "Class pickers only list classes implementing this interface.",
+        "insert": "MustImplement = \"\""
+      },
+      {
+        "name": "TitleProperty",
+        "description": "Array of structs: property used as each element's title.",
+        "insert": "TitleProperty = \"\""
+      },
+      {
+        "name": "GetOptions",
+        "description": "Function returning the dropdown options for an FName/FString.",
+        "insert": "GetOptions = \"\""
+      },
+      {
+        "name": "BlueprintProtected",
+        "description": "Callable only from Blueprints of this class or subclasses."
+      },
+      {
+        "name": "DefaultToSelf",
+        "description": "Pin defaults to the calling Blueprint's self.",
+        "insert": "DefaultToSelf = \"\""
+      },
+      {
+        "name": "HidePin",
+        "description": "Hides the named parameter pin.",
+        "insert": "HidePin = \"\""
+      },
+      {
+        "name": "WorldContext",
+        "description": "Parameter that receives the world context automatically.",
+        "insert": "WorldContext = \"\""
+      },
+      {
+        "name": "Keywords",
+        "description": "Extra search keywords for the Blueprint action menu.",
+        "insert": "Keywords = \"\""
+      },
+      {
+        "name": "CompactNodeTitle",
+        "description": "Show the node in compact form with this title.",
+        "insert": "CompactNodeTitle = \"\""
+      },
+      {
+        "name": "ExpandEnumAsExecs",
+        "description": "Turns an enum parameter into multiple exec pins.",
+        "insert": "ExpandEnumAsExecs = \"\""
+      },
+      {
+        "name": "DeprecatedFunction",
+        "description": "Marks a Blueprint function as deprecated."
+      },
+      {
+        "name": "DeprecationMessage",
+        "description": "Message shown for deprecated items.",
+        "insert": "DeprecationMessage = \"\""
+      },
+      {
+        "name": "BlueprintSpawnableComponent",
+        "description": "UCLASS: component can be added in the Blueprint editor."
+      },
+      {
+        "name": "IsBlueprintBase",
+        "description": "UCLASS: may be used as a Blueprint parent class.",
+        "insert": "IsBlueprintBase = \"true\""
+      }
+    ]
+  }
+}

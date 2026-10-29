@@ -34,7 +34,7 @@ namespace PenguinExtention.Services
         /// Scans the solution directory and parent directories for Unreal Engine indicators.
         /// Must be called on a background thread (uses file I/O).
         /// </summary>
-        public async Task DetectAsync(AsyncPackage package, string engineRootOverride, string extraIncludeDirectories = null)
+        public async Task DetectAsync(AsyncPackage package, string engineRootOverride, string extraIncludeDirectories = null, string unityEditorOverride = null)
         {
             await Task.Yield(); // ensure we're off the UI thread
 
@@ -60,6 +60,7 @@ namespace PenguinExtention.Services
 
             if (string.IsNullOrEmpty(UProjectFilePath))
             {
+                if (DetectUnity(unityEditorOverride)) return; // Unity: C# only, no C++ indexing of Library/PackageCache
                 DetectPlainCpp(extraIncludeDirectories);
                 return;
             }
@@ -70,6 +71,34 @@ namespace PenguinExtention.Services
 
             // Step 2: Find engine source
             EngineSourceRoot = ResolveEngineSource(engineRootOverride);
+        }
+
+        // ── Unity projects (any editor version) ────────────────────
+
+        /// <summary>True when the solution belongs to a Unity project (Assets/ + ProjectSettings/ProjectVersion.txt).</summary>
+        public bool IsUnityProject { get; private set; }
+        /// <summary>Editor version from ProjectVersion.txt, e.g. "2022.3.10f1" or "6000.0.23f1".</summary>
+        public string UnityVersion { get; private set; }
+        /// <summary>Folder holding Unity.exe for that version, or null when it is not installed.</summary>
+        public string UnityEditorPath { get; private set; }
+        /// <summary>True when <see cref="UnityEditorPath"/> is exactly the project's version (not a fallback install).</summary>
+        public bool UnityEditorExact { get; private set; }
+        /// <summary>docs.unity3d.com version segment ("2022.3", "6000.0").</summary>
+        public string UnityDocsVersion { get; private set; }
+
+        private bool DetectUnity(string editorOverride)
+        {
+            var root = UnityEditorLocator.FindProjectRoot(SolutionDirectory);
+            if (root == null) return false;
+            IsUnityProject = true;
+            ProjectRoot = root;
+            ProjectSourceRoot = Path.Combine(root, "Assets");
+            UnityVersion = UnityEditorLocator.ReadVersion(root);
+            EngineVersion = UnityVersion;
+            UnityDocsVersion = UnityEditorLocator.DocsVersion(UnityVersion);
+            UnityEditorPath = UnityEditorLocator.FindEditor(root, UnityVersion, editorOverride, out var exact);
+            UnityEditorExact = exact;
+            return true;
         }
 
         // ── Plain C/C++ solutions (SDL2 and other engine-less projects) ─

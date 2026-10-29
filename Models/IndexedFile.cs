@@ -19,5 +19,8 @@ namespace PenguinExtention.Models
 
         /// <summary>True if the file lives under the Engine source tree.</summary>
         public bool IsEngineFile { get; set; }
+
+        /// <summary>Pack the file belongs to; null for the solution's own code.</summary>
+        public string PackId { get; set; }
     }
 }

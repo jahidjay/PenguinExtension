@@ -29,10 +29,12 @@ Editor/                      — Classifier (UE coloring), reference-highlight t
 Completion/
   UnrealCompletionSource.cs         — IAsyncCompletionSource: symbols + macro specifiers
   UnrealCompletionSourceProvider.cs — MEF factory
-  UnrealMacroSpecifiers.cs          — Static specifier data (UPROPERTY/UFUNCTION/UCLASS/etc.)
+  UnrealMacroSpecifiers.cs          — Specifier lookup (data comes from packs via PackService)
+  CSharpPackCompletion.cs           — C# ("CSharp") completion + commit manager: pack snippets, Unity message stubs
+  CSharpPackContext.cs              — Regex/brace-count C# context: enclosing class, base type, member level, snippet expansion
 Database/SQLiteCache.cs      — SQLite persistence layer (WAL, concurrent R/W)
-Models/                      — UnrealSymbol, UnrealClassInfo, UnrealSymbolKind enum, IndexedFile
-QuickInfo/                   — IAsyncQuickInfoSource hover tooltips
+Models/                      — UnrealSymbol, UnrealClassInfo, UnrealSymbolKind enum, IndexedFile, PackManifest
+QuickInfo/                   — IAsyncQuickInfoSource hover tooltips (CSharpPackQuickInfo: Unity message docs on hover)
 Services/
   CacheService.cs            — Thread-safe in-memory cache (ReaderWriterLockSlim)
   UnrealIndexer.cs           — Parallel regex scanner for UE macros in .h/.hpp files
@@ -44,6 +46,10 @@ Services/
   HeaderSourceResolver.cs    — .h ↔ .cpp incl. Public/Private; module-relative include paths
   SolutionFileIndex.cs       — Background project file list for Open File
   PenguinOptionsPage.cs      — Tools → Options page
+  PackService.cs             — Penguin Packs: discover/detect/enable packs, serve specifiers, snippets, callbacks, index roots
+  PackImporter.cs            — Import pack folder/zip or wrap a library folder in a new pack
+  UnityEditorLocator.cs      — Unity version (ProjectVersion.txt), editor install (Hub/csproj/legacy), docs version
+  McpClient.cs / McpConfig.cs / McpHub.cs — MCP client (stdio, streamable HTTP, SSE), .mcp.json servers, open connections
   PremiumHooks.cs            — Delegates the Premium add-on fills in (Explorer "Go to Implementation"/"Find References")
   ThemeModel.cs / ThemeService.cs — Penguin Color Theme: entries + defaults, theme.json, runtime apply (SYNTAX_COLOR_PLAN.md)
 UI/
@@ -53,6 +59,8 @@ UI/
   ShortcutsReferenceWindow.cs      — Keyboard shortcuts reference
   ShortcutsReferenceControl.xaml/.cs — WPF control for shortcuts
   ColorThemeWindow.cs              — Penguin Color Theme window (code-built WPF)
+  PacksWindow.cs                   — Penguin Packs window (check marks, import, remove)
+  McpWindow.cs                     — Penguin MCP window (servers, tools, call)
 ```
 
 ## Keyboard Shortcuts (all two-chord: Alt+U, then… — Ctrl+Shift+U also works, but NOT inside the text editor)
@@ -89,14 +97,34 @@ plain C++ members of reflected classes. Bump `ExtractorVersion` in UnrealIndexer
 | S   | Symbol Inspector |
 | K   | Keyboard Shortcuts |
 | Shift+T | Penguin Color Theme window |
+| Shift+P | Penguin Packs window |
+| Shift+M | Penguin MCP window |
 | Y / O / H / J / R / M | Find Symbol / Open File / Toggle Header-Source / Go To Implementation / Go To Related / List Methods — **Premium** |
 | F / W | Find References / Definition Preview window — **Premium** |
 | N / A / C / V / P / Q | Rename / Add Include / Create Declaration / Move Implementation / Encapsulate Field / Document Method — **Premium** |
 | T / B / L / X / Z | Snippets & Surround With / Implement Virtual Methods / Add Missing Cases / Introduce Variable / Forward Declaration — **Premium** |
 
-**Two project modes:** Unreal (`.uproject` found) and plain C/C++ (any solution with `.vcxproj`/`.cpp`, e.g. SDL2 games). Plain mode indexes the solution with `Services/CppSymbolExtractor.cs` (general C/C++ declarations) plus library include folders from each `.vcxproj`'s AdditionalIncludeDirectories and the "Extra Include Directories" option. Core (Rust) backend is Unreal-only.
+**Unity mode:** a solution next to `Assets/` + `ProjectSettings/ProjectVersion.txt` (any Unity version). No C++ index; the
+`unity` pack adds C# message stubs, snippets and hover docs (MEF `ContentType("CSharp")`). Editor lookup: `UnityEditorLocator`.
+
+**MCP:** `.mcp.json` (solution) / `.vs\mcp.json` / `.vscode\mcp.json` / `%USERPROFILE%\.mcp.json` + pack `mcp` suggestions.
+Servers start only when the user clicks Connect in the MCP window. Connections close when the solution changes.
+
+**Two C++ project modes:** Unreal (`.uproject` found) and plain C/C++ (any solution with `.vcxproj`/`.cpp`, e.g. SDL2 games). Plain mode indexes the solution with `Services/CppSymbolExtractor.cs` (general C/C++ declarations) plus library include folders from each `.vcxproj`'s AdditionalIncludeDirectories and the "Extra Include Directories" option. Core (Rust) backend is Unreal-only.
 
 Signature help (declaration + docs) appears when typing `(` after an indexed Unreal function.
+
+## Penguin Packs (docs/PACKS_PLAN.md)
+
+Engine/library support is data in pack folders (`pack.json` + `specifiers.json`/`snippets.json`/headers), not C#.
+Built-in packs live in `Packs/` (shipped in the VSIX: `unreal`, `sdl3`); user packs in `%LOCALAPPDATA%\PenguinExtension\Packs`;
+solution packs in `<solution>\.penguin\packs` (later location wins by id). Per-solution check marks:
+`<solution>\.vs\PenguinExtension\packs.json` (`{"enabled":{"sdl3":false}}`; missing = on if detected).
+`PackService.Load` runs on the background thread after project detection; a check-mark change re-runs startup.
+Symbols/files carry `pack_id` (schema v3): NULL = solution code, `unreal` = engine source, `external` = unclaimed library.
+Add Unreal specifiers/snippets by editing `Packs/unreal/*.json`, never C# arrays. Self-Test lists every pack.
+Packs window: Alt+U, Shift+P (check marks, import folder/zip/library). Pack `languages` decides where snippets show
+(`cpp` → C++ popup, `csharp` → C# completion); `callbacks.json` = engine-called methods; `mcp` = suggested MCP servers.
 
 ## Free vs Premium
 
@@ -115,7 +143,7 @@ action go through `Services/PremiumHooks.cs`. Internal APIs Premium uses are a c
 
 3. **No C++ AST parsing.** Speed comes from regex. Use `RegexOptions.Compiled`. Avoid catastrophic backtracking.
 
-4. **MEF content type is `C/C++`.** All completion and QuickInfo providers must use `[ContentType("C/C++")]`.
+4. **MEF content type is `C/C++`** for C/C++ features. Pack features for C# (Unity) use `[ContentType("CSharp")]`.
 
 5. **Legacy .csproj format.** Files must be explicitly listed in `PenguinExtention.csproj` as `<Compile>` items.
 

@@ -1,0 +1,26 @@
+{
+  "id": "unity",
+  "name": "Unity",
+  "version": "1.0.0",
+  "description": "Unity C#: MonoBehaviour/ScriptableObject/Editor message stubs with docs for your editor version, Inspector attributes and common snippets. Works with every Unity version (2019 to Unity 6).",
+  "languages": [
+    "csharp"
+  ],
+  "detect": {
+    "files": [
+      "ProjectSettings/ProjectVersion.txt"
+    ]
+  },
+  "snippets": "snippets.json",
+  "callbacks": "callbacks.json",
+  "docsUrl": "https://docs.unity3d.com/{version}/Documentation/ScriptReference/{page}.html",
+  "localDocs": "{editor}/Data/Documentation/en/ScriptReference/{page}.html",
+  "mcp": [
+    {
+      "name": "Unity (MCP for Unity)",
+      "type": "http",
+      "url": "http://localhost:8080/mcp",
+      "hint": "Start the server inside the Unity Editor (Window → MCP for Unity → Start Server). Using a different Unity MCP server? Add it to .mcp.json in the project folder (Edit .mcp.json button)."
+    }
+  ]
+}
