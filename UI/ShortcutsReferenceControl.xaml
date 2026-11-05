@@ -8,7 +8,11 @@
         <StackPanel Margin="8">
 
             <TextBlock Text="🐧 PenguinExtension Shortcuts" FontSize="16" FontWeight="Bold"
-                       Margin="0,0,0,12"/>
+                       Margin="0,0,0,4"/>
+            <TextBlock Margin="0,0,0,12" TextWrapping="Wrap">
+                Every feature is free.
+                <Hyperlink Click="Donate_Click">Support Penguin with a donation ❤</Hyperlink>
+            </TextBlock>
 
             <!-- Navigation -->
             <TextBlock Text="Navigation" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"
@@ -83,10 +87,8 @@
             </Grid>
 
             <!-- Visual Assist–style commands (Visual Assist default key in brackets) -->
-            <TextBlock Text="⭐ Penguin Premium — Visual Assist–style Navigation" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"
+            <TextBlock Text="Visual Assist–style Navigation" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"
                        Foreground="DodgerBlue"/>
-            <TextBlock Margin="8,0,0,4" TextWrapping="Wrap" Opacity="0.75"
-                       Text="These need the separate Penguin Premium extension."/>
             <StackPanel Margin="8,0,0,12">
                 <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, Y   Find Symbol            [VA: Shift+Alt+S]"/>
                 <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, O   Open File in Project   [VA: Shift+Alt+O]"/>
@@ -98,7 +100,7 @@
                 <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, W   Definition Preview (live declaration + implementation)"/>
             </StackPanel>
 
-            <TextBlock Text="⭐ Penguin Premium — Visual Assist–style Refactoring" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"
+            <TextBlock Text="Visual Assist–style Refactoring" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,4"
                        Foreground="DodgerBlue"/>
             <StackPanel Margin="8,0,0,12">
                 <TextBlock FontFamily="Consolas" Margin="0,2" TextWrapping="Wrap" Text="Alt+U, N   Rename (preview + CoreRedirect)  [VA: Shift+Alt+R]"/>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using Microsoft.VisualStudio.Language.StandardClassification;
@@ -169,9 +169,10 @@ namespace PenguinExtention.Editor
 
     /// <summary>
     /// Colors Unreal macros, indexed symbols (types, structs, enums, delegates, functions, enum values, properties)
-    /// and reflection-macro specifiers / meta keys. One linear, comment- and string-aware scan per line (no regex,
-    /// no AST); the name map is an immutable snapshot, never queried per span. Specifier lists that span several
-    /// lines are handled by looking back a few lines for the opening macro.
+    /// and reflection-macro specifiers / meta keys; names the index never saw are colored from their context (a
+    /// class/struct/enum keyword, or an Unreal type prefix in a type position). One linear, comment- and
+    /// string-aware scan per line (no regex, no AST); the name map is an immutable snapshot, never queried per
+    /// span. Specifier lists that span several lines are handled by looking back a few lines for the opening macro.
     /// </summary>
     internal sealed class UnrealClassifier : IClassifier
     {
@@ -339,8 +340,9 @@ namespace PenguinExtention.Editor
             state.Pending = false;
             if (state.Depth > 0 && state.ExpectKey)
             {
-                bool meta = state.MetaDepth > 0 && state.Depth == state.MetaDepth;
-                emit?.Invoke(start, word.Length, meta ? ColorKind.MetaKey : ColorKind.Specifier);
+                bool meta = state.MetaDepth > 0 && state.Depth >= state.MetaDepth;
+                var indexed = IndexedTypeKind(word, names);
+                emit?.Invoke(start, word.Length, indexed ?? (meta ? ColorKind.MetaKey : ColorKind.Specifier));
                 state.AfterMeta = !meta && state.Depth == 1 && word.Equals("meta", StringComparison.OrdinalIgnoreCase);
                 state.ExpectKey = false;
                 return;
@@ -359,7 +361,16 @@ namespace PenguinExtention.Editor
                 emit(start, word.Length, ColorKind.Macro);
                 return;
             }
-            if (names == null || !names.TryGetValue(word, out var category)) return;
+            if (names == null || !names.TryGetValue(word, out var category))
+            {
+                // Types the index never saw (unscanned engine headers, forward declarations): color by context.
+                if (state.Depth == 0)
+                {
+                    var guess = GuessTypeKind(text, start, word);
+                    if (guess.HasValue) emit(start, word.Length, guess.Value);
+                }
+                return;
+            }
             ColorKind kind;
             switch (category)
             {
@@ -393,7 +404,8 @@ namespace PenguinExtention.Editor
             {
                 case '(':
                     state.Depth++;
-                    state.ExpectKey = state.AfterMeta;
+                    // Every group inside a reflection macro holds items: meta=(…), ClassGroup=(Custom), AllowedClasses=(…).
+                    state.ExpectKey = true;
                     if (state.AfterMeta) state.MetaDepth = state.Depth;
                     state.AfterMeta = false;
                     break;
@@ -405,7 +417,7 @@ namespace PenguinExtention.Editor
                     if (state.Depth <= 0) state = default;
                     break;
                 case ',':
-                    state.ExpectKey = state.Depth == 1 || state.Depth == state.MetaDepth;
+                    state.ExpectKey = true;
                     state.AfterMeta = false;
                     break;
                 case '=':
@@ -423,6 +435,108 @@ namespace PenguinExtention.Editor
             while (j >= 0 && char.IsWhiteSpace(text[j])) j--;
             if (j < 0) return false;
             return text[j] == '.' || text[j] == '>' && j > 0 && text[j - 1] == '-';
+        }
+
+        /// <summary>
+        /// Type color for an indexed type standing where a reflection macro expects an item
+        /// (AllowedClasses=(UTexture2D)). A word the packs list as a specifier stays a specifier, and the prefix
+        /// convention is deliberately not consulted here: EditAnywhere and ExposeOnSpawn would read as enums.
+        /// </summary>
+        private static ColorKind? IndexedTypeKind(string word, Dictionary<string, byte> names)
+        {
+            if (names == null || PackService.IsSpecifierName(word)) return null;
+            if (!names.TryGetValue(word, out var category)) return null;
+            switch (category)
+            {
+                case NameCategory.Class: return ColorKind.Class;
+                case NameCategory.Struct: return ColorKind.Struct;
+                case NameCategory.Enum: return ColorKind.Enum;
+                case NameCategory.Delegate: return ColorKind.Delegate;
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// Type color for a name the index doesn't know, read off its immediate context: a class/struct/enum
+        /// keyword in front of it, or Unreal's type-prefix convention in a spot where only a type can stand.
+        /// Null when the name isn't recognizably a type.
+        /// </summary>
+        private static ColorKind? GuessTypeKind(string text, int start, string word)
+        {
+            if (PenguinOptionsPage.Current?.ColorUnindexedTypes == false) return null;
+            if (Array.IndexOf(TypeKeywords, word) >= 0) return null; // the keyword itself ("enum class EFoo")
+            if (AfterMemberAccess(text, start)) return null; // obj->Name is a member, never a type
+            var declared = DeclaredTypeKind(text, start);
+            if (declared.HasValue) return declared;
+            if (!IsTypePosition(text, start + word.Length)) return null;
+            return PrefixKind(word);
+        }
+
+        /// <summary>Kind implied by a class/struct/enum/union keyword immediately before the name.</summary>
+        private static ColorKind? DeclaredTypeKind(string text, int start)
+        {
+            switch (WordBefore(text, start, out int keywordStart))
+            {
+                case "class":
+                    // "enum class EFoo" is still an enum.
+                    return WordBefore(text, keywordStart, out _) == "enum" ? ColorKind.Enum : ColorKind.Class;
+                case "struct": case "union": return ColorKind.Struct;
+                case "enum": return ColorKind.Enum;
+                default: return null;
+            }
+        }
+
+        private static readonly string[] TypeKeywords = { "class", "struct", "enum", "union" };
+
+        private const int MaxKeywordLength = 6; // "struct" is the longest word we look back over
+
+        /// <summary>The identifier ending just before <paramref name="start"/>, or null if there isn't a short one.</summary>
+        private static string WordBefore(string text, int start, out int wordStart)
+        {
+            wordStart = start;
+            int j = Math.Min(start, text.Length) - 1;
+            while (j >= 0 && char.IsWhiteSpace(text[j])) j--;
+            int end = j + 1;
+            int limit = Math.Max(0, end - MaxKeywordLength);
+            while (j >= limit && (char.IsLetter(text[j]) || text[j] == '_')) j--;
+            if (j + 1 >= end) return null;
+            // Stopped mid-identifier: what we'd return is a tail, not a keyword.
+            if (j >= 0 && (char.IsLetterOrDigit(text[j]) || text[j] == '_')) return null;
+            wordStart = j + 1;
+            return text.Substring(wordStart, end - wordStart);
+        }
+
+        /// <summary>True when the token after <paramref name="end"/> only follows a type.</summary>
+        private static bool IsTypePosition(string text, int end)
+        {
+            int j = end;
+            while (j < text.Length && (text[j] == ' ' || text[j] == '	')) j++;
+            if (j >= text.Length) return false;
+            char c = text[j];
+            if (c == '*' || c == '&' || c == '<' || c == '>' || c == '(') return true;
+            if (c == ':') return j + 1 < text.Length && text[j + 1] == ':';
+            return char.IsLetter(c) || c == '_'; // "UFoo Bar" — a declaration
+        }
+
+        /// <summary>Kind implied by Unreal's type-prefix convention (UActor, FVector, EMode, TArray…).</summary>
+        private static ColorKind? PrefixKind(string word)
+        {
+            if (UnrealProjectDetector.Instance?.IsUnrealProject != true) return null;
+            if (word.Length < 3 || !char.IsUpper(word[1]) || IsAllUpper(word)) return null; // ALL_CAPS is a macro
+            switch (word[0])
+            {
+                case 'U': case 'A': case 'I': case 'S': case 'T': return ColorKind.Class;
+                case 'F': return ColorKind.Struct;
+                case 'E': return ColorKind.Enum;
+                default: return null;
+            }
+        }
+
+        private static bool IsAllUpper(string word)
+        {
+            foreach (var c in word)
+                if (char.IsLower(c)) return false;
+            return true;
         }
 
         /// <summary>Index just past the string/char literal starting at <paramref name="i"/> (or end of line).</summary>

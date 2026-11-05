@@ -40,5 +40,29 @@ namespace PenguinExtention.Commands
         public const int OpenColorThemeId = 0x0A01;        // Shift+T — Penguin Color Theme window
         public const int OpenPacksId = 0x0A02;             // Shift+P — Penguin Packs window
         public const int OpenMcpId = 0x0A03;               // Shift+M — Penguin MCP window
+        public const int DonateId = 0x0A04;                // Tools → Penguin → Support Penguin (Donate)
+
+        // ── Navigation (Alt+U, …) ────────────────────────────
+        public const int FindSymbolId = 0x0800;            // Y
+        public const int OpenFileInSolutionId = 0x0801;    // O
+        public const int ToggleHeaderSourceId = 0x0802;    // H
+        public const int GoToRelatedId = 0x0803;           // R
+        public const int ListMethodsId = 0x0804;           // M
+        public const int GoToImplementationId = 0x0805;    // J
+        public const int FindReferencesId = 0x0806;        // F
+        public const int OpenDefinitionPreviewId = 0x0807; // W
+
+        // ── Refactorings (Alt+U, …) ──────────────────────────
+        public const int RenameSymbolId = 0x0900;          // N
+        public const int AddIncludeId = 0x0901;            // A
+        public const int CreateDeclarationId = 0x0902;     // C
+        public const int MoveImplementationId = 0x0903;    // V
+        public const int EncapsulateFieldId = 0x0904;      // P
+        public const int DocumentMethodId = 0x0905;        // Q
+        public const int InsertSnippetId = 0x0906;         // T (Surround With when text is selected)
+        public const int ImplementVirtualMethodsId = 0x0907; // B
+        public const int AddMissingCasesId = 0x0908;       // L
+        public const int IntroduceVariableId = 0x0909;     // X
+        public const int AddForwardDeclarationId = 0x090A; // Z
     }
 }

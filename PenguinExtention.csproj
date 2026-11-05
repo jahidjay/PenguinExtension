@@ -120,7 +120,14 @@
     <Compile Include="Services\HeaderSourceResolver.cs" />
     <Compile Include="Services\SolutionFileIndex.cs" />
     <Compile Include="Services\PenguinOptionsPage.cs" />
-    <Compile Include="Services\PremiumHooks.cs" />
+    <Compile Include="Services\PenguinLinks.cs" />
+    <Compile Include="Commands\NavigationCommands.cs" />
+    <Compile Include="Commands\RefactorCommands.cs" />
+    <Compile Include="Commands\CodeGenCommands.cs" />
+    <Compile Include="UI\QuickPickDialog.cs" />
+    <Compile Include="UI\RenameDialog.cs" />
+    <Compile Include="UI\FindReferencesWindow.cs" />
+    <Compile Include="UI\DefinitionPreviewWindow.cs" />
     <Compile Include="Services\PackService.cs" />
     <Compile Include="Services\PackImporter.cs" />
     <Compile Include="Services\UnityEditorLocator.cs" />

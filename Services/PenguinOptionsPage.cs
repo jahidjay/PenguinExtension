@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using Microsoft.VisualStudio.Shell;
 
 namespace PenguinExtention.Services
@@ -69,6 +69,11 @@ namespace PenguinExtention.Services
         [DisplayName("Enable Unreal Syntax Coloring")]
         [Description("Color Unreal reflection macros and indexed Unreal types (Fonts and Colors: 'Penguin Unreal ...').")]
         public bool EnableUnrealColoring { get; set; } = true;
+
+        [Category("Editor")]
+        [DisplayName("Color Types Missing From The Index")]
+        [Description("Also color type names the index has not seen, from their context: after a class/struct/enum keyword, or an Unreal type prefix (UActor, FVector, EMode) in a place where only a type can stand.")]
+        public bool ColorUnindexedTypes { get; set; } = true;
 
         [Category("Editor")]
         [DisplayName("Highlight References Under Caret")]

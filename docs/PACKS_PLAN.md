@@ -15,7 +15,7 @@ find packs, detect them, turn them on/off, and feed their data to the existing f
 | Editors | Visual Studio and VS Code, equal priority, reading the same packs. |
 | Order | Unreal → SDL3 → Unity → Godot. |
 | Getting packs | Built-in catalog of official packs + import a local folder/zip. No Git URLs. |
-| Free vs Premium | Pack system and all packs are free. Premium = navigation/refactoring commands, working in any pack. |
+| Pricing | Everything is free (donations welcome); navigation/refactoring commands work in any pack. |
 
 ## Folder layout
 
@@ -135,7 +135,7 @@ always run with a timeout so a bad pattern can't freeze VS).
 - `extension_api.json` + `doc/classes/*.xml` sources; godot-cpp (C++), Godot C#, then GDScript (new content type, classifier, completion) in VS and VS Code.
 
 ### Phase 6 — DLL plugins
-- `IPenguinPack` interface loaded via MEF from pack folders; Premium moves onto it (replaces `PremiumHooks`).
+- `IPenguinPack` interface loaded via MEF from pack folders.
 
 ## Rules that change
 - CLAUDE.md hard rule 4: C/C++ features use `ContentType "C/C++"`; pack features for C# use `"CSharp"` (done in phase 4).

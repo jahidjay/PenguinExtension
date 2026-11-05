@@ -50,6 +50,13 @@ namespace PenguinExtention
     [ProvideToolWindow(typeof(McpWindow),
                        Style = VsDockStyle.Tabbed,
                        Window = ToolWindowGuids.Outputwindow)]
+    [ProvideToolWindow(typeof(FindReferencesWindow),
+                       Style = VsDockStyle.Tabbed,
+                       Window = ToolWindowGuids.Outputwindow)]
+    [ProvideToolWindow(typeof(DefinitionPreviewWindow),
+                       Style = VsDockStyle.Linked,
+                       Window = ToolWindowGuids.SolutionExplorer,
+                       Orientation = ToolWindowOrientation.Bottom)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideOptionPage(typeof(PenguinOptionsPage),
                        "PenguinExtension", "General", 0, 0, true)]
@@ -60,7 +67,7 @@ namespace PenguinExtention
         public const string PackageGuidString = "7D9B3C2E-8A4F-4B1D-9E5C-6F0A2D3B8C7E";
 
         /// <summary>Keep in step with Identity/@Version in source.extension.vsixmanifest.</summary>
-        internal const string Version = "1.12";
+        internal const string Version = "1.13";
 
         private SQLiteCache _db;
         private UnrealIndexer _indexer;
@@ -323,6 +330,34 @@ namespace PenguinExtention
             // Penguin Packs + MCP
             RegisterToolWindowCommand(commandService, PenguinExtensionCommandIds.OpenPacksId, typeof(PacksWindow));
             RegisterToolWindowCommand(commandService, PenguinExtensionCommandIds.OpenMcpId, typeof(McpWindow));
+            RegisterToolWindowCommand(commandService, PenguinExtensionCommandIds.OpenDefinitionPreviewId, typeof(DefinitionPreviewWindow));
+
+            void Add(int id, Func<Task> body) => commandService.AddCommand(new MenuCommand((s, e) => PenguinEditor.Run(body),
+                new CommandID(PenguinExtensionCommandIds.CommandSetGuid, id)));
+
+            Add(PenguinExtensionCommandIds.DonateId, () => { PenguinLinks.OpenDonate(); return Task.CompletedTask; });
+
+            // Navigation
+            Add(PenguinExtensionCommandIds.FindSymbolId, NavigationCommands.FindSymbolAsync);
+            Add(PenguinExtensionCommandIds.OpenFileInSolutionId, NavigationCommands.OpenFileAsync);
+            Add(PenguinExtensionCommandIds.ToggleHeaderSourceId, NavigationCommands.ToggleHeaderSourceAsync);
+            Add(PenguinExtensionCommandIds.GoToRelatedId, NavigationCommands.GoToRelatedAsync);
+            Add(PenguinExtensionCommandIds.ListMethodsId, NavigationCommands.ListMethodsAsync);
+            Add(PenguinExtensionCommandIds.GoToImplementationId, NavigationCommands.GoToImplementationAsync);
+            Add(PenguinExtensionCommandIds.FindReferencesId, RefactorCommands.FindReferencesAsync);
+
+            // Refactorings + code generation
+            Add(PenguinExtensionCommandIds.RenameSymbolId, RefactorCommands.RenameAsync);
+            Add(PenguinExtensionCommandIds.AddIncludeId, RefactorCommands.AddIncludeAsync);
+            Add(PenguinExtensionCommandIds.CreateDeclarationId, RefactorCommands.CreateDeclarationAsync);
+            Add(PenguinExtensionCommandIds.MoveImplementationId, RefactorCommands.MoveImplementationAsync);
+            Add(PenguinExtensionCommandIds.EncapsulateFieldId, RefactorCommands.EncapsulateFieldAsync);
+            Add(PenguinExtensionCommandIds.DocumentMethodId, RefactorCommands.DocumentMethodAsync);
+            Add(PenguinExtensionCommandIds.InsertSnippetId, CodeGenCommands.InsertSnippetAsync);
+            Add(PenguinExtensionCommandIds.ImplementVirtualMethodsId, CodeGenCommands.ImplementVirtualMethodsAsync);
+            Add(PenguinExtensionCommandIds.AddMissingCasesId, CodeGenCommands.AddMissingCasesAsync);
+            Add(PenguinExtensionCommandIds.IntroduceVariableId, CodeGenCommands.IntroduceVariableAsync);
+            Add(PenguinExtensionCommandIds.AddForwardDeclarationId, CodeGenCommands.AddForwardDeclarationAsync);
         }
 
         // ponytail: one helper instead of repeating tool window opening boilerplate

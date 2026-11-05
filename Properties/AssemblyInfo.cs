@@ -2,9 +2,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-// Penguin Premium (separate, private extension) builds on this assembly's services.
-[assembly: InternalsVisibleTo("PenguinPremium")]
-
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.

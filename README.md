@@ -75,20 +75,16 @@ All use the first chord **Ctrl+Shift+U**, then:
 | S | Symbol Inspector |
 | K | Keyboard Shortcuts |
 
-## Editions
+## Free, with donations
 
-| | Free (this repo) | Penguin Premium (separate add-on) |
-| --- | --- | --- |
-| Unreal symbol index, autocomplete, specifier completion | ✅ | ✅ |
-| Hover docs, signature help, Go To Unreal Definition | ✅ | ✅ |
-| Unreal Explorer, Symbol Inspector | ✅ | ✅ |
-| Generate Implementation / Getter-Setter | ✅ | ✅ |
-| Penguin Color Theme | ✅ | ✅ |
-| Definition Preview window | | ✅ |
-| Find References, Find Symbol, Open File, Toggle Header/Source, Go To Implementation/Related, List Methods | | ✅ |
-| Rename (+CoreRedirects), Add Include, Create Declaration, Move Implementation, Encapsulate Field, Document Method, snippets, Implement Virtuals, Add Missing Cases, Introduce Variable, Forward Declaration | | ✅ |
+Every feature is free — including the Definition Preview window, Find References, Visual Assist–style navigation
+(Find Symbol, Open File, Toggle Header/Source, Go To Implementation/Related, List Methods) and refactorings (Rename +
+CoreRedirects, Add Include, Create Declaration, Move Implementation, Encapsulate Field, Document Method, snippets,
+Implement Virtuals, Add Missing Cases, Introduce Variable, Forward Declaration). These used to be the separate
+Penguin Premium add-on; since 1.13 they are part of this extension. If you had Penguin Premium installed, uninstall it.
 
-Penguin Premium is a separate Visual Studio extension that requires this one; its source is not in this repository.
+If Penguin saves you time, please consider supporting it: **[Donate ❤](https://github.com/sponsors/jahidjay)**
+(also under Tools → Penguin Extension → Support Penguin).
 
 ## Penguin Color Theme
 

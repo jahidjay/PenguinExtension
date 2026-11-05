@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -145,6 +145,26 @@ namespace PenguinExtention.Commands
             var coloredText = string.Join(" ", colored);
             Line(coloredText == "Macro:UPROPERTY Specifier:EditAnywhere Specifier:Category Specifier:meta MetaKey:ClampMin",
                 "Specifier coloring → " + coloredText);
+            var nestedColored = new List<string>();
+            var nestedState = default(UnrealClassifier.MacroState);
+            const string nestedSample = "UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))";
+            UnrealClassifier.Scan(nestedSample, ref nestedState, null, (index, length, kind) =>
+                nestedColored.Add(kind + ":" + nestedSample.Substring(index, length)));
+            var nestedText = string.Join(" ", nestedColored);
+            Line(nestedText == "Macro:UCLASS Specifier:ClassGroup Specifier:Custom Specifier:meta MetaKey:BlueprintSpawnableComponent",
+                "Nested specifier groups → " + nestedText);
+            var contextColored = new List<string>();
+            var contextState = default(UnrealClassifier.MacroState);
+            const string contextSample = "void Fire(class UMyComp* C, AActor* T, FVector L) { Cast<UOther>(T); } enum class EMode;";
+            UnrealClassifier.Scan(contextSample, ref contextState, null, (index, length, kind) =>
+                contextColored.Add(kind + ":" + contextSample.Substring(index, length)));
+            var contextText = string.Join(" ", contextColored);
+            // Unreal type prefixes (U/A/F/E…) only apply in an Unreal project; the keyword rule applies everywhere.
+            var expectedContext = PenguinOptionsPage.Current?.ColorUnindexedTypes == false ? ""
+                : detector?.IsUnrealProject == true
+                    ? "Class:UMyComp Class:AActor Struct:FVector Class:UOther Enum:EMode"
+                    : "Class:UMyComp Enum:EMode";
+            Line(contextText == expectedContext, "Context type coloring → " + contextText);
 
             // ── Editor hooks: which pipelines has VS actually called? ──
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
@@ -165,7 +185,7 @@ namespace PenguinExtention.Commands
             else
                 Line(null, "No completion call yet — type a few letters in a C++ file, then rerun");
 
-            Line(null, PremiumHooks.IsInstalled ? "Penguin Premium: installed" : "Penguin Premium: not installed (free edition)");
+            report.AppendLine("🐧 " + PenguinLinks.DonateMessage);
 
             // ── Key bindings ──
             foreach (var line in KeyBindings()) report.AppendLine(line);

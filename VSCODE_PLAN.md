@@ -1,7 +1,7 @@
 # VSCODE_PLAN.md — Penguin for VS Code and Google Antigravity (free edition)
 
 **Goal (confirmed with the user 2026-10-14):** bring the free Visual Studio edition to VS Code and Antigravity
-(a VS Code fork that installs the same `.vsix`; its store is Open VSX). Free edition only — Premium for VS Code
+(a VS Code fork that installs the same `.vsix`; its store is Open VSX). Free edition features only — the navigation/refactoring commands for VS Code
 comes later. Deliver `.vsix` files (no store publishing yet) for **Windows, macOS and Linux**.
 
 Base: `apps/vscode-ext` (TypeScript LSP client, v0.1) + Rust `penguin-lsp` (`crates/ue-lsp`), which already provide

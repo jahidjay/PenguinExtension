@@ -1,4 +1,4 @@
-# CLAUDE.md — PenguinExtension
+﻿# CLAUDE.md — PenguinExtension
 
 This file provides context for Claude Code, Cursor, and other AI assistants working on this codebase.
 
@@ -24,8 +24,12 @@ Commands/
   GenerateGetterSetterCommand.cs   — Generate Get/Set from UPROPERTY
   PenguinExtensionCommandIds.cs    — GUID + IDs (sync with .vsct)
   PenguinEditor.cs                 — Shared editor helpers; multi-file edits in one linked undo
+  NavigationCommands.cs            — Find Symbol, Open File, Toggle Header/Source, Go To Implementation/Related, List Methods
+  RefactorCommands.cs              — Find References, Rename (+CoreRedirects), Add Include, Create Declaration, Move Impl, Encapsulate, Document
+  CodeGenCommands.cs               — Snippets/Surround With, Implement Virtuals, Add Missing Cases, Introduce Variable, Forward Decl
 Editor/                      — Classifier (UE coloring), reference-highlight tagger, signature help
-  UnrealClassifier.cs              — Unreal syntax coloring: types/structs/enums/delegates/functions/properties + specifiers/meta keys
+  UnrealClassifier.cs              — Unreal syntax coloring: types/structs/enums/delegates/functions/properties + specifiers/meta keys;
+                                     unindexed types colored from context (class/struct/enum keyword, U/A/F/E… prefix in a type position)
 Completion/
   UnrealCompletionSource.cs         — IAsyncCompletionSource: symbols + macro specifiers
   UnrealCompletionSourceProvider.cs — MEF factory
@@ -50,7 +54,7 @@ Services/
   PackImporter.cs            — Import pack folder/zip or wrap a library folder in a new pack
   UnityEditorLocator.cs      — Unity version (ProjectVersion.txt), editor install (Hub/csproj/legacy), docs version
   McpClient.cs / McpConfig.cs / McpHub.cs — MCP client (stdio, streamable HTTP, SSE), .mcp.json servers, open connections
-  PremiumHooks.cs            — Delegates the Premium add-on fills in (Explorer "Go to Implementation"/"Find References")
+  PenguinLinks.cs            — Donate URL (one constant) + opener
   ThemeModel.cs / ThemeService.cs — Penguin Color Theme: entries + defaults, theme.json, runtime apply (SYNTAX_COLOR_PLAN.md)
 UI/
   UnrealExplorerWindow.cs          — Symbol Explorer tool window
@@ -61,6 +65,9 @@ UI/
   ColorThemeWindow.cs              — Penguin Color Theme window (code-built WPF)
   PacksWindow.cs                   — Penguin Packs window (check marks, import, remove)
   McpWindow.cs                     — Penguin MCP window (servers, tools, call)
+  DefinitionPreviewWindow.cs       — Live declaration/implementation preview (Alt+U, W)
+  FindReferencesWindow.cs          — Find References results (Alt+U, F)
+  QuickPickDialog.cs / RenameDialog.cs — Fuzzy picker + rename preview dialogs
 ```
 
 ## Keyboard Shortcuts (all two-chord: Alt+U, then… — Ctrl+Shift+U also works, but NOT inside the text editor)
@@ -99,10 +106,10 @@ plain C++ members of reflected classes. Bump `ExtractorVersion` in UnrealIndexer
 | Shift+T | Penguin Color Theme window |
 | Shift+P | Penguin Packs window |
 | Shift+M | Penguin MCP window |
-| Y / O / H / J / R / M | Find Symbol / Open File / Toggle Header-Source / Go To Implementation / Go To Related / List Methods — **Premium** |
-| F / W | Find References / Definition Preview window — **Premium** |
-| N / A / C / V / P / Q | Rename / Add Include / Create Declaration / Move Implementation / Encapsulate Field / Document Method — **Premium** |
-| T / B / L / X / Z | Snippets & Surround With / Implement Virtual Methods / Add Missing Cases / Introduce Variable / Forward Declaration — **Premium** |
+| Y / O / H / J / R / M | Find Symbol / Open File / Toggle Header-Source / Go To Implementation / Go To Related / List Methods |
+| F / W | Find References / Definition Preview window |
+| N / A / C / V / P / Q | Rename / Add Include / Create Declaration / Move Implementation / Encapsulate Field / Document Method |
+| T / B / L / X / Z | Snippets & Surround With / Implement Virtual Methods / Add Missing Cases / Introduce Variable / Forward Declaration |
 
 **Unity mode:** a solution next to `Assets/` + `ProjectSettings/ProjectVersion.txt` (any Unity version). No C++ index; the
 `unity` pack adds C# message stubs, snippets and hover docs (MEF `ContentType("CSharp")`). Editor lookup: `UnityEditorLocator`.
@@ -126,14 +133,11 @@ Add Unreal specifiers/snippets by editing `Packs/unreal/*.json`, never C# arrays
 Packs window: Alt+U, Shift+P (check marks, import folder/zip/library). Pack `languages` decides where snippets show
 (`cpp` → C++ popup, `csharp` → C# completion); `callbacks.json` = engine-called methods; `mcp` = suggested MCP servers.
 
-## Free vs Premium
+## Free + donations
 
-This repo is the **free** edition (public). **Penguin Premium** is a separate VSIX in a separate private repo
-(`../PenguinPremium`, `jahidjay/PenguinPremium`) that depends on this extension and references this assembly via
-`[InternalsVisibleTo("PenguinPremium")]`. Premium owns: Definition Preview window, Find References window, and every
-Visual Assist-style navigation/refactoring command (IDs 0x08xx/0x09xx under its own command set GUID, parented to
-this extension's Tools → Penguin menu groups). Never add premium code here; free features that offer a premium
-action go through `Services/PremiumHooks.cs`. Internal APIs Premium uses are a contract — keep them stable.
+Everything is free and lives in this one VSIX (v1.13 merged the former Penguin Premium add-on back in; it is
+discontinued). Navigation/refactoring IDs 0x08xx/0x09xx are in the main command set. Donations: Tools → Penguin →
+Support Penguin (`DonateId`), the Shortcuts window link and the Self-Test footer all use `Services/PenguinLinks.DonateUrl`.
 
 ## Hard Rules
 

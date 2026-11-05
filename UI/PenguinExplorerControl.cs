@@ -436,14 +436,8 @@ namespace PenguinExtention.UI
                 menu.Items.Add(mi);
             }
             Add("Go to Definition", s => { ThreadHelper.ThrowIfNotOnUIThread(); PenguinEditor.Navigate(s); });
-            void AddPremium(string text, Func<Func<UnrealSymbol, Task>> hook) => Add(text, s =>
-            {
-                var action = hook();
-                if (action == null) { ThreadHelper.ThrowIfNotOnUIThread(); PenguinEditor.Status(PremiumHooks.Upsell); return; }
-                PenguinEditor.Run(() => action(s));
-            });
-            AddPremium("Go to Implementation", () => PremiumHooks.GoToImplementation);
-            AddPremium("Find References", () => PremiumHooks.FindReferences);
+            Add("Go to Implementation", s => PenguinEditor.Run(() => Commands.NavigationCommands.GoToImplementationOfAsync(s)));
+            Add("Find References", s => PenguinEditor.Run(() => RefactorCommands.ShowReferencesAsync(s)));
             menu.Items.Add(new Separator());
             Add("Copy Name", s => Clipboard.SetText(s.Name));
             Add("Copy Qualified Name", s => Clipboard.SetText(s.FullyQualifiedName ?? s.DisplayText));

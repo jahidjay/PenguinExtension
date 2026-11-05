@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -63,6 +63,7 @@ namespace PenguinExtention.Services
             public IReadOnlyList<PackInfo> Packs = new PackInfo[0];
             public Dictionary<string, UnrealMacroSpecifiers.Specifier[]> Macros = new Dictionary<string, UnrealMacroSpecifiers.Specifier[]>();
             public HashSet<string> MacroNames = new HashSet<string>();
+            public HashSet<string> SpecifierNames = new HashSet<string>(StringComparer.Ordinal); // every macro's keys, flat
             public UnrealSnippets.Snippet[] Snippets = new UnrealSnippets.Snippet[0];      // C/C++ only
             public UnrealSnippets.Snippet[] AllSnippets = new UnrealSnippets.Snippet[0];   // every language
             public PackCallback[] Callbacks = new PackCallback[0];
@@ -87,6 +88,8 @@ namespace PenguinExtention.Services
             macro != null && _current.Macros.TryGetValue(macro, out var list) ? list : null;
         /// <summary>Macros with specifier lists, excluding "meta" (which lives inside another macro).</summary>
         public static HashSet<string> MacroNames => _current.MacroNames;
+        /// <summary>True when the word is a specifier or meta key of any reflection macro in the enabled packs.</summary>
+        public static bool IsSpecifierName(string word) => word != null && _current.SpecifierNames.Contains(word);
         public static UnrealSnippets.Snippet[] Snippets => _current.Snippets;
         /// <summary>Snippets of enabled packs for one language ("csharp", "gdscript", "cpp").</summary>
         public static UnrealSnippets.Snippet[] SnippetsFor(string language) =>
@@ -186,6 +189,7 @@ namespace PenguinExtention.Services
             snap.Snippets = snippets.Where(x => x.Language == "cpp").ToArray();
             snap.Callbacks = callbacks.ToArray();
             snap.MacroNames = new HashSet<string>(snap.Macros.Keys.Where(k => k != "meta"));
+            snap.SpecifierNames = new HashSet<string>(snap.Macros.Values.SelectMany(v => v).Select(x => x.Name), StringComparer.Ordinal);
             _current = snap;
             PenguinLog.Info("Packs", packs.Count == 0 ? "no packs found (looked in " + BuiltInDirectory + ")"
                 : string.Join(", ", packs.Select(p => p.Id + (p.Error != null ? " [error]" : p.Enabled ? " [on]" : " [off]"))));

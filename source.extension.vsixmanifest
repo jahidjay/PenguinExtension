@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="PenguinExtention.831518ca-a06f-433a-9cfb-15b7a6538550" Version="1.12" Language="en-US" Publisher="Jahid Ahsan Yasin" />
+    <Identity Id="PenguinExtention.831518ca-a06f-433a-9cfb-15b7a6538550" Version="1.13" Language="en-US" Publisher="Jahid Ahsan Yasin" />
     <DisplayName>PenguinExtension 🐧 C++ Navigator</DisplayName>
-    <Description>Free Unreal Engine C++ tools for Visual Studio 2022 and 2026: Unreal symbol index, autocomplete with UPROPERTY/UFUNCTION specifier completion, hover docs, signature help, Go To Unreal Definition, Unreal Explorer, Symbol Inspector, Generate Implementation / Getter-Setter, and the Penguin Color Theme for all C++ code. Penguin Premium (separate add-on) adds the Definition Preview window, Find References, Visual Assist-style navigation and refactorings.</Description>
+    <Description>Free Unreal Engine C++ tools for Visual Studio 2022 and 2026: Unreal symbol index, autocomplete with UPROPERTY/UFUNCTION specifier completion, hover docs, signature help, Go To Unreal Definition, Unreal Explorer, Symbol Inspector, Generate Implementation / Getter-Setter, and the Penguin Color Theme for all C++ code. Also free: Definition Preview window, Find References, Visual Assist-style navigation (Find Symbol, Open File, Toggle Header/Source, Go To Implementation/Related, List Methods) and refactorings (Rename with CoreRedirects, Add Include, Create Declaration, Move Implementation, Encapsulate Field, snippets and more). Every feature is free — donations welcome.</Description>
     <Icon>Resources\PenguinIcon.png</Icon>
     <PreviewImage>Resources\PenguinPreview.png</PreviewImage>
     <Tags>Unreal Engine, UE5, UE4, SDL2, C++, IntelliSense, code completion, syntax highlighting, color theme</Tags>
