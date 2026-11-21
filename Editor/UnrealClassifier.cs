@@ -235,6 +235,7 @@ namespace PenguinExtention.Editor
         {
             var result = new List<ClassificationSpan>();
             if (PenguinOptionsPage.Current?.EnableUnrealColoring == false) return result;
+            ThemeService.OnCppBufferOpened();
             RefreshNames();
             var names = _names;
 

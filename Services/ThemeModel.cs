@@ -149,12 +149,47 @@ namespace PenguinExtention.Services
         public static ThemeSettings Load(string path)
         {
             if (!File.Exists(path)) return new ThemeSettings();
-            var settings = JsonConvert.DeserializeObject<ThemeSettings>(File.ReadAllText(path)) ?? new ThemeSettings();
+            var text = File.ReadAllText(path);
+            var settings = JsonConvert.DeserializeObject<ThemeSettings>(text) ?? new ThemeSettings();
             if (settings.Overrides == null) settings.Overrides = new Dictionary<string, ThemeStyle>();
+            MigrateGroupedOverrides(text, settings.Overrides);
             // Drop entries this version does not know (e.g. a theme exported by a newer Penguin).
             foreach (var id in settings.Overrides.Keys.ToList())
-                if (!ThemeCatalog.Entries.Any(e => e.Id == id)) settings.Overrides.Remove(id);
+                if (!ThemeCatalog.Entries.Any(e => e.Id == id) || settings.Overrides[id].IsEmpty) settings.Overrides.Remove(id);
             return settings;
+        }
+
+        // ponytail: also accept legacy grouped theme JSONs (Overrides.<Group>.Items[].{Name, Foreground})
+        private static readonly Dictionary<string, string> LegacyItemMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Keyword", "keyword" }, { "KeywordCPlusPlus", "keyword" }, { "Namespace", "namespace" },
+            { "String", "string" }, { "Comment", "comment" }, { "Number", "number" }, { "NumberLiteral", "number" },
+            { "TypeCSharp", "template" }, { "ClassCSharp", "class" }, { "StructCSharp", "struct" }, { "EnumCSharp", "enum" },
+            { "FunctionCSharp", "function" }, { "MethodCSharp", "method" }, { "PropertyCSharp", "property" },
+            { "LocalVariableCSharp", "local" }, { "ParameterCSharp", "parameter" }, { "GlobalVariableCSharp", "global" },
+            { "ConstantCSharp", "macro" }, { "EnumMemberCSharp", "enumValue" },
+            { "UPROPERTY", "ueMacro" }, { "UFUNCTION", "ueMacro" }, { "UCLASS", "ueMacro" }, { "USTRUCT", "ueMacro" },
+            { "EditAnywhere", "specifier" }
+        };
+
+        private static void MigrateGroupedOverrides(string json, Dictionary<string, ThemeStyle> overrides)
+        {
+            var root = Newtonsoft.Json.Linq.JObject.Parse(json)["Overrides"] as Newtonsoft.Json.Linq.JObject;
+            if (root == null) return;
+            foreach (var prop in root.Properties())
+            {
+                var items = (prop.Value as Newtonsoft.Json.Linq.JObject)?["Items"] as Newtonsoft.Json.Linq.JArray;
+                if (items == null) continue;
+                foreach (var item in items.OfType<Newtonsoft.Json.Linq.JObject>())
+                {
+                    var name = (string)item["Name"];
+                    var fg = (string)item["Foreground"];
+                    if (name == null || !ThemeColors.TryParse(fg, out var color)) continue;
+                    if (!LegacyItemMap.TryGetValue(name, out var id)) continue;
+                    if (!overrides.TryGetValue(id, out var style) || style.Dark == null)
+                        overrides[id] = new ThemeStyle { Dark = ThemeColors.ToHex(color) };
+                }
+            }
         }
 
         public void Save(string path)

@@ -165,7 +165,8 @@ namespace PenguinExtention.Services
         {
             var dir = new DirectoryInfo(projectDir);
             for (int i = 0; i < 4 && dir != null; i++, dir = dir.Parent)
-                if (SafeEnumerate(dir.FullName, "*.sln", 1).Any()) return dir.FullName.TrimEnd('\\') + "\\";
+                if (SafeEnumerate(dir.FullName, "*.sln", 1).Any() || SafeEnumerate(dir.FullName, "*.slnx", 1).Any())
+                    return dir.FullName.TrimEnd('\\') + "\\";
             return projectDir;
         }
 
@@ -282,12 +283,134 @@ namespace PenguinExtention.Services
                         }
                     }
                 }
+
+                // Epic Games Launcher manifest (%ProgramData%\Epic\UnrealEngineLauncher\LauncherInstalled.dat) —
+                // newer UE 5.x installs (e.g. 5.8, 5.9) are often listed here without an HKLM registry subkey.
+                var fromLauncher = FindEngineFromLauncherManifest(association);
+                if (fromLauncher != null)
+                    return fromLauncher;
+
+                // Standard & sibling install roots (e.g. C:\Program Files\Epic Games\UE_5.9, D:\Unreal Engine\UE_5.8)
+                var fromDisk = FindEngineFromKnownRoots(association);
+                if (fromDisk != null)
+                    return fromDisk;
             }
             catch
             {
                 // Swallow JSON/registry errors — best effort
             }
 
+            // Fallback: extract engine path referenced inside generated solution / UE5.vcxproj files
+            return FindEngineFromProjectFiles();
+        }
+
+        private static string FindEngineFromLauncherManifest(string association)
+        {
+            try
+            {
+                var datPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "Epic", "UnrealEngineLauncher", "LauncherInstalled.dat");
+                if (!File.Exists(datPath)) return null;
+
+                var root = JObject.Parse(File.ReadAllText(datPath));
+                var list = root["InstallationList"] as JArray;
+                if (list == null) return null;
+
+                var targetId = "UE_" + association;
+                foreach (var item in list.OfType<JObject>())
+                {
+                    var artifact = item.Value<string>("ArtifactId");
+                    var appName = item.Value<string>("AppName");
+                    if (!string.Equals(artifact, targetId, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(appName, targetId, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(artifact, association, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var installDir = item.Value<string>("InstallLocation");
+                    if (!string.IsNullOrEmpty(installDir))
+                    {
+                        var src = Path.Combine(installDir, "Engine", "Source");
+                        if (Directory.Exists(src)) return src;
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static string FindEngineFromKnownRoots(string association)
+        {
+            var folderName = "UE_" + association;
+            var parentDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Epic Games")
+            };
+
+            foreach (var regRoot in new[] { @"SOFTWARE\EpicGames\Unreal Engine", @"SOFTWARE\WOW6432Node\EpicGames\Unreal Engine" })
+            {
+                try
+                {
+                    using (var key = Registry.LocalMachine.OpenSubKey(regRoot))
+                    {
+                        if (key == null) continue;
+                        foreach (var subName in key.GetSubKeyNames())
+                        {
+                            using (var sub = key.OpenSubKey(subName))
+                            {
+                                var dir = (sub?.GetValue("InstalledDirectory") as string)?.TrimEnd('\\', '/');
+                                var parent = string.IsNullOrEmpty(dir) ? null : Path.GetDirectoryName(dir);
+                                if (!string.IsNullOrEmpty(parent)) parentDirs.Add(parent);
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            foreach (var parent in parentDirs)
+            {
+                try
+                {
+                    var src = Path.Combine(parent, folderName, "Engine", "Source");
+                    if (Directory.Exists(src)) return src;
+                }
+                catch { }
+            }
+            return null;
+        }
+
+        private string FindEngineFromProjectFiles()
+        {
+            var candidates = new List<string>();
+            if (!string.IsNullOrEmpty(ProjectRoot))
+            {
+                var ueProj = Path.Combine(ProjectRoot, "Intermediate", "ProjectFiles", "UE5.vcxproj");
+                if (File.Exists(ueProj)) candidates.Add(ueProj);
+                candidates.AddRange(SafeEnumerate(ProjectRoot, "*.sln", 1));
+                candidates.AddRange(SafeEnumerate(ProjectRoot, "*.slnx", 1));
+            }
+            if (!string.IsNullOrEmpty(SolutionDirectory) && !string.Equals(SolutionDirectory, ProjectRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                candidates.AddRange(SafeEnumerate(SolutionDirectory, "*.sln", 1));
+                candidates.AddRange(SafeEnumerate(SolutionDirectory, "*.slnx", 1));
+            }
+
+            var rx = new System.Text.RegularExpressions.Regex(
+                @"([A-Za-z]:\\[^""<>|\r\n]*?)\\Engine\\(?:Source|Build|Intermediate|Extras)\b",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            foreach (var file in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    foreach (System.Text.RegularExpressions.Match m in rx.Matches(File.ReadAllText(file)))
+                    {
+                        var src = Path.Combine(m.Groups[1].Value, "Engine", "Source");
+                        if (Directory.Exists(src)) return src;
+                    }
+                }
+                catch { }
+            }
             return null;
         }
 

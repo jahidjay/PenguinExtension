@@ -17,7 +17,7 @@ namespace PenguinExtention.Services
         private static readonly HashSet<string> Extensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             ".h", ".hpp", ".hh", ".hxx", ".inl", ".cpp", ".cc", ".cxx", ".c", ".cs", ".ini", ".usf", ".ush", ".hlsl", ".glsl", ".vert", ".frag",
-            ".uplugin", ".uproject", ".json", ".txt", ".md", ".cmake", ".vcxproj", ".props", ".xml", ".lua"
+            ".uplugin", ".uproject", ".json", ".txt", ".md", ".cmake", ".vcxproj", ".props", ".xml", ".lua", ".sln", ".slnx"
         };
         private static readonly HashSet<string> SkipDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {

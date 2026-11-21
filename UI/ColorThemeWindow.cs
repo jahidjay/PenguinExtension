@@ -144,7 +144,7 @@ namespace PenguinExtention.UI
             _editDark.Checked += (s, e) => Refresh();
             _editLight.Checked += (s, e) => Refresh();
             void OnApplied() => Dispatcher.BeginInvoke(new Action(() => { _working = ThemeService.Settings.Clone(); Refresh(); }));
-            Loaded += (s, e) => { ThemeService.Applied -= OnApplied; ThemeService.Applied += OnApplied; Refresh(); };
+            Loaded += (s, e) => { ThemeService.Applied -= OnApplied; ThemeService.Applied += OnApplied; _working = ThemeService.Settings.Clone(); Refresh(); };
             Unloaded += (s, e) => ThemeService.Applied -= OnApplied;
             Refresh();
         }
